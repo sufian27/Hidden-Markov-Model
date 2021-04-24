@@ -1,8 +1,9 @@
 # File: hmm.py
 # Purpose:  Starter code for building and training an HMM in CSC 246.
 
-
+import os
 import argparse
+import numpy as np
 from nlputil import *   # utility methods for working with text
 
 
@@ -26,7 +27,16 @@ class HMM:
     # The constructor should initalize all the model parameters.
     # you may want to write a helper method to initialize the emission probabilities.
     def __init__(self, num_states, vocab_size):
-        pass
+        #Num_states is number of hidden states
+        self.num_states=num_states
+        #Vocab size is the number of unique words
+        self.vocab_size=vocab_size
+        #Transitions are a KxK matrix where K is the number of hidden states. Initialized randomly between 0 and 1
+        self.transitions=np.random.rand(self.num_states,self.num_states)
+        #pi is vector of size K, also initialized between 0 and 1
+        self.pi=np.random.rand(self.num_states)
+        #TEMPORARY: Intializing emissions to random numbers between 0 and 1
+        self.emissions=np.random.rand(self.num_states, self.vocab_size)
 
     # return the loglikelihood for a complete dataset (train OR test) (list of matrices)
     def loglikelihood(self, dataset):
@@ -76,6 +86,19 @@ def main():
     # 5+. use EM to train the HMM on the training data,
     #     output loglikelihood on train and test after each iteration
     #     if it converges early, stop the loop and print a message
+    
+    #Paths for positive and negative training data
+    postrain= os.path.join(args.train_path, 'pos')
+    negtrain= os.path.join(args.train_path, 'neg')
+    #Combine into list
+    train_paths= [postrain, negtrain]
+    
+    #Create vocab and get its size. word_vocab is a dictionary from words to integers. Ex: 'painful':2070
+    word_vocab = build_vocab_words(train_paths)
+    vocab_size = len(word_vocab)
+    
+    #Create model
+    model = HMM(args.hidden_states, vocab_size)
 
 
 if __name__ == '__main__':
