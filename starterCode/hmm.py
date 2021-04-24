@@ -36,8 +36,8 @@ class HMM:
         self.transitions=np.random.rand(self.num_states,self.num_states)
         #pi is vector of size K, also initialized between 0 and 1
         self.pi=np.random.rand(self.num_states)
-        #TEMPORARY: Intializing emissions to random numbers between 0 and 1
-        self.emissions=np.random.rand(self.num_states, self.vocab_size)
+        #TEMPORARY: Intializing emissions to uniform distribution
+        self.emissions=np.random.uniform(size=(self.num_states, self.vocab_size))
     
     # return the loglikelihood for a complete dataset (train OR test) (list of matrices)
     def loglikelihood(self, dataset):
@@ -111,6 +111,21 @@ def main():
     # 5+. use EM to train the HMM on the training data,
     #     output loglikelihood on train and test after each iteration
     #     if it converges early, stop the loop and print a message
+    
+    #Paths for positive and negative training data
+    postrain= os.path.join(args.train_path, 'pos')
+    negtrain= os.path.join(args.train_path, 'neg')
+    #Combine into list
+    train_paths= [postrain, negtrain]
+
+    #Create vocab and get its size. word_vocab is a dictionary from words to integers. Ex: 'painful':2070
+    word_vocab = build_vocab_words(train_paths)
+    vocab_size = len(word_vocab)
+
+    #Create model
+    model = HMM(args.hidden_states, vocab_size)
+    
+    
 
 if __name__ == '__main__':
     main()
