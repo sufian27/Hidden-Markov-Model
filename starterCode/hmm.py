@@ -100,19 +100,50 @@ class HMM:
                                       [j] * self.emissions[j][t+1] * beta[t+1][j])/den
         return y, e
 
+    # Tunes transitions
+    def tune_transitions(self, sample, y, e):
+        for i in range(0, self.num_states):
+            for j in range(0, self.num_states):
+                num = 0
+                den = 0
+                for t in range(1, len(sample) - 1):
+                    num += e[t][i][j]
+                    for k in range(0, self.num_states):
+                        den += e[t][i][k]
+                self.transitions[i][j] = num/den
+
+    # Tunes emissions
+    def tune_emissions(self, sample, y, e):
+        for j in range(0, self.num_states):
+            for vk in range(1, self.vocab_size + 1):
+                den = 0
+                num = 0
+                for t in range(1, len(sample)):
+                    den += y[t][j]
+                    if vk == sample[t]:
+                        num += y[t][j]
+                self.emissions[j][vk] = num/den
+
     # Uses the e and y matrices from the e_step to tune transition and emission probabilities
-    def m_step(self, y, e):
-        pass
+    def m_step(self, sample, y, e):
+        self.tune_transitions(sample, y, e)
+        self.tune_emissions(sample, y, e)
 
     # apply a single step of the em algorithm to the model on all the training data,
     # which is most likely a python list of numpy matrices (one per sample).
     # Note: you may find it helpful to write helper methods for the e-step and m-step,
     def em_step(self, dataset):
         # Takes out a sample from the dataset and does e_step and m_step
+        print("Before EM")
+        print(self.transitions)
+        print(self.emissions)
         for sample in dataset:
             y, e = e_step(sample)
-            m_step(y, e)
+            m_step(sample, y, e)
             break
+        print("After EM")
+        print(self.transitions)
+        print(self.emissions)
 
     # Return a "completed" sample by additing additional steps based on model probability.
     def complete_sequence(self, sample, steps):
@@ -162,7 +193,7 @@ def main():
     dataset = load_and_convert_data_words_to_onehot(train_paths, word_vocab)
     # Create model
     model = HMM(args.hidden_states, vocab_size)
-    print(dataset)
+    model.em_step(dataset)
 
 
 if __name__ == '__main__':
