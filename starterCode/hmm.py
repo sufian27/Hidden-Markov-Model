@@ -183,8 +183,13 @@ class HMM:
         print(self.transitions)
         print(self.emissions)
         for sample in dataset:
+<<<<<<< HEAD
             y, e = self.e_step(sample)
             self.m_step(sample, y, e)
+=======
+            y, e = e_step(sample)
+            m_step(sample, y, e)
+>>>>>>> 7c102dd79532eaf45736c62d29f6cd333f464805
             break
         print("After EM")
         print(self.transitions)
@@ -235,7 +240,11 @@ def main():
     word_vocab = build_vocab_words(train_paths)
     vocab_size = len(word_vocab)
 
+<<<<<<< HEAD
     dataset = load_and_convert_data_words_to_ints(train_paths, word_vocab)
+=======
+    dataset = load_and_convert_data_words_to_onehot(train_paths, word_vocab)
+>>>>>>> 7c102dd79532eaf45736c62d29f6cd333f464805
     # Create model
     model = HMM(args.hidden_states, vocab_size)
     model.em_step(dataset)
