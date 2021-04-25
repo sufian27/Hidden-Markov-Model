@@ -42,12 +42,57 @@ class HMM:
             size=(self.num_states, self.vocab_size))
 
     # return the loglikelihood for a complete dataset (train OR test) (list of matrices)
+    #TODO: calculate mean log likelihood
     def loglikelihood(self, dataset):
         pass
 
     # return the loglikelihood for a single sequence (numpy matrix)
-    def loglikelihood_helper(self, sample):
+    def loglikelihood_helper(self, sample): #abdulmoid : i think this ln (p(X| model))? can use alpha beta products here i guess
         pass
+
+    #given a sequence of observations, find the most probable path of hidden states it could have followed
+    def viterbi(self, sample): #here sample is the given observations. should be pre-converted to numbers 
+        #Dimenstions of v are TxN where T=number of observations, N=number of hidden states
+        v=np.zeros(len(sample), self.num_states) 
+        #Dimenstions of backpointer are TxN where T=number of observations, N=number of hidden states
+        backpointer=np.zeros(len(sample), self.num_states)
+        for t in range(0, len(sample)):
+            for j in range(0,len(v)):
+                v[t][j]=self.pi[j]*self.emissions[j][sample[0]] #pi_j * bj(o1)
+        max_v_prev=-99
+        prev_state_selected=0
+
+        #Recursive Step
+        for t in range(1, len(sample)):
+            for j in range(0, self.num_states):
+                for i in range(0, self.num_states):#go through all states again to analyze states that pass through time t-1
+                    if(v[t-1][i]*self.transitions[i][j]>max_v_prev): #we need max v_t-1 (i) *aij
+                        max_v_prev=v[t-1][i]*self.transitions[i][j]
+                        prev_state_selected=i
+                v[t][j]= max_v_prev *self.emissions[j][sample[t]] 
+                backpointer[t][j]=prev_state_selected
+        
+        #Find value and indices of best v value for time T (final time)
+        max_val=-99
+        time=len(sample) #final time
+        best_state=0   
+        for j in range(0,len(v)):
+            if (v[time][j]>max_val):
+                max_val=v[time][j]
+                best_state=j
+
+        #intialize path trace array
+        path_trace=np.zeros(len(sample)) #preparing array to build path of hidden states to output
+        path_trace[len(path_trace)-1]=col #start back trace by adding to the end, the best_state for for time T in previous state
+        
+        #run backtrace
+        index=len(path_trace)-2
+        while(index>=0):
+            path_trace[index]=backpointer[time][path_trace[index+1]] #backpointer[current_time][backpointer of the next node in path]
+            time-=1 
+            index-=1
+         
+        return max_val, path_trace
 
     # given the integer representation of a single sequence
     # return a T x num_states matrix of alpha where T is the total number of tokens in a single sequence
