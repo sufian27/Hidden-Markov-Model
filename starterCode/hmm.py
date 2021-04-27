@@ -42,56 +42,63 @@ class HMM:
             size=(self.num_states, self.vocab_size))
 
     # return the loglikelihood for a complete dataset (train OR test) (list of matrices)
-    #TODO: calculate mean log likelihood
+    # TODO: calculate mean log likelihood
     def loglikelihood(self, dataset):
         pass
 
     # return the loglikelihood for a single sequence (numpy matrix)
-    def loglikelihood_helper(self, sample): #abdulmoid : i think this ln (p(X| model))? can use alpha beta products here i guess
+    # abdulmoid : i think this ln (p(X| model))? can use alpha beta products here i guess
+    def loglikelihood_helper(self, sample):
         pass
 
-    #given a sequence of observations, find the most probable path of hidden states it could have followed
-    def viterbi(self, sample): #here sample is the given observations. should be pre-converted to numbers 
-        #Dimenstions of v are TxN where T=number of observations, N=number of hidden states
-        v=np.zeros(len(sample), self.num_states) 
-        #Dimenstions of backpointer are TxN where T=number of observations, N=number of hidden states
-        backpointer=np.zeros(len(sample), self.num_states)
+    # given a sequence of observations, find the most probable path of hidden states it could have followed
+    # here sample is the given observations. should be pre-converted to numbers
+    def viterbi(self, sample):
+        # Dimenstions of v are TxN where T=number of observations, N=number of hidden states
+        v = np.zeros(len(sample), self.num_states)
+        # Dimenstions of backpointer are TxN where T=number of observations, N=number of hidden states
+        backpointer = np.zeros(len(sample), self.num_states)
         for t in range(0, len(sample)):
-            for j in range(0,len(v)):
-                v[t][j]=self.pi[j]*self.emissions[j][sample[0]] #pi_j * bj(o1)
-        max_v_prev=-99
-        prev_state_selected=0
+            for j in range(0, len(v)):
+                v[t][j] = self.pi[j] * \
+                    self.emissions[j][sample[0]]  # pi_j * bj(o1)
+        max_v_prev = -99
+        prev_state_selected = 0
 
-        #Recursive Step
+        # Recursive Step
         for t in range(1, len(sample)):
             for j in range(0, self.num_states):
-                for i in range(0, self.num_states):#go through all states again to analyze states that pass through time t-1
-                    if(v[t-1][i]*self.transitions[i][j]>max_v_prev): #we need max v_t-1 (i) *aij
-                        max_v_prev=v[t-1][i]*self.transitions[i][j]
-                        prev_state_selected=i
-                v[t][j]= max_v_prev *self.emissions[j][sample[t]] 
-                backpointer[t][j]=prev_state_selected
-        
-        #Find value and indices of best v value for time T (final time)
-        max_val=-99
-        time=len(sample) #final time
-        best_state=0   
-        for j in range(0,len(v)):
-            if (v[time][j]>max_val):
-                max_val=v[time][j]
-                best_state=j
+                # go through all states again to analyze states that pass through time t-1
+                for i in range(0, self.num_states):
+                    if(v[t-1][i]*self.transitions[i][j] > max_v_prev):  # we need max v_t-1 (i) *aij
+                        max_v_prev = v[t-1][i]*self.transitions[i][j]
+                        prev_state_selected = i
+                v[t][j] = max_v_prev * self.emissions[j][sample[t]]
+                backpointer[t][j] = prev_state_selected
 
-        #intialize path trace array
-        path_trace=np.zeros(len(sample)) #preparing array to build path of hidden states to output
-        path_trace[len(path_trace)-1]=col #start back trace by adding to the end, the best_state for for time T in previous state
-        
-        #run backtrace
-        index=len(path_trace)-2
-        while(index>=0):
-            path_trace[index]=backpointer[time][path_trace[index+1]] #backpointer[current_time][backpointer of the next node in path]
-            time-=1 
-            index-=1
-         
+        # Find value and indices of best v value for time T (final time)
+        max_val = -99
+        time = len(sample)  # final time
+        best_state = 0
+        for j in range(0, len(v)):
+            if (v[time][j] > max_val):
+                max_val = v[time][j]
+                best_state = j
+
+        # intialize path trace array
+        # preparing array to build path of hidden states to output
+        path_trace = np.zeros(len(sample))
+        # start back trace by adding to the end, the best_state for for time T in previous state
+        path_trace[len(path_trace)-1] = col
+
+        # run backtrace
+        index = len(path_trace)-2
+        while(index >= 0):
+            # backpointer[current_time][backpointer of the next node in path]
+            path_trace[index] = backpointer[time][path_trace[index+1]]
+            time -= 1
+            index -= 1
+
         return max_val, path_trace
 
     # given the integer representation of a single sequence
@@ -160,6 +167,7 @@ class HMM:
     # Tunes emissions
     def tune_emissions(self, sample, y, e):
         for j in range(0, self.num_states):
+            # Need to keep it this way since vocab values start from 1
             for vk in range(1, self.vocab_size + 1):
                 den = 0
                 num = 0
@@ -167,7 +175,7 @@ class HMM:
                     den += y[t][j]
                     if vk == sample[t]:
                         num += y[t][j]
-                self.emissions[j][vk] = num/den
+                self.emissions[j][vk-1] = num/den
 
     # Uses the e and y matrices from the e_step to tune transition and emission probabilities
     def m_step(self, sample, y, e):
@@ -182,10 +190,13 @@ class HMM:
         print("Before EM")
         print(self.transitions)
         print(self.emissions)
+        i = 0
         for sample in dataset:
+            if i == 100:
+                break
             y, e = self.e_step(sample)
             self.m_step(sample, y, e)
-            break
+            i += 1
         print("After EM")
         print(self.transitions)
         print(self.emissions)
@@ -234,7 +245,6 @@ def main():
     # Create vocab and get its size. word_vocab is a dictionary from words to integers. Ex: 'painful':2070
     word_vocab = build_vocab_words(train_paths)
     vocab_size = len(word_vocab)
-
     dataset = load_and_convert_data_words_to_ints(train_paths, word_vocab)
     # Create model
     model = HMM(args.hidden_states, vocab_size)
