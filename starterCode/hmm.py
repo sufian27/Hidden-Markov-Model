@@ -42,15 +42,42 @@ class HMM:
             size=(self.num_states, self.vocab_size))
 
     # return the loglikelihood for a complete dataset (train OR test) (list of matrices)
-    # TODO: calculate mean log likelihood
-
     def loglikelihood(self, dataset):
-        pass
+        mean_loglikelihood = 0
+        for sample in dataset:
+            loglikelihood = self.loglikelihood_helper(sample)
+            mean_loglikelihood += loglikelihood
+        mean_loglikelihood /= len(dataset)
+        return mean_loglikelihood
 
     # return the loglikelihood for a single sequence (numpy matrix)
-    # abdulmoid : i think this ln (p(X| model))? can use alpha beta products here i guess
     def loglikelihood_helper(self, sample):
-        pass
+        alpha, c = self.forward(sample)
+        loglikelihood = 0
+        for c_t in c:
+            loglikelihood += np.log(c_t)
+        loglikelihood = -loglikelihood
+        return loglikelihood
+
+    # return a prediction of next n words of a sequence by evaluating likelihoods
+    # possible bug: because we are calculating *log* likelihoods we may want to minimize it instead of maximize it 
+    def predict(self, sample, vocab_size, num_words_into_future):
+        pred = sample
+        for i in range(num_words_into_future):
+            pred_step = self.predict_next_word(pred, vocab_size)
+            pred.append(pred_step)
+        return pred
+
+    # return a prediction of the next word of a sequence 
+    def predict_next_word(self, sample, vocab_size):
+        pred = 0
+        pred_prob = 0
+        for i in range(1, vocab_size+1):
+            prob = self.loglikelihood_helper(sample.append(i))
+            if prob > pred_prob:
+                pred_prob = prob
+                pred = i
+        return pred
 
     # given a sequence of observations (single array of numbers) with blanks at the end (represented by -99),
     # find the most probable path of hidden states for given observations including blanks
@@ -137,26 +164,33 @@ class HMM:
 
     # given the integer representation of a single sequence
     # return a T x num_states matrix of alpha where T is the total number of tokens in a single sequence
+    # and also return a T x 1 array of c for normalizing alpha, beta and calculating the log likelihood
     def forward(self, sample):
         alpha = np.zeros((len(sample), self.num_states))
+        c = np.zeros((len(sample),))
         # initialization
         for j in range(0, self.num_states):
             alpha[0][j] = self.pi[j] * self.emissions[j][sample[0]]
+            c[0] += alpha[0][j]
+        c[0] = 1/c[0]
+        alpha[0] *= c[0] 
         # recursion
         for t in range(1, len(sample)):
             for j in range(0, self.num_states):
                 for i in range(0, self.num_states):
                     alpha[t][j] += alpha[t-1][i] * \
                         self.transitions[i][j] * self.emissions[j][sample[t]]
-        return alpha
+                c[t] += alpha[t][j]
+            c[t] = 1/c[t]
+            alpha[t] *= c[t]
+        return alpha, c
 
     # given the integer representation of a single sequence
     # return a T x num_state matrix of beta where T is the total number of tokens in a single sequence
-    def backward(self, sample):
+    def backward(self, sample, c):
         beta = np.zeros((len(sample), self.num_states))
         # initialization
-        for i in range(0, self.num_states):
-            beta[len(sample)-1][i] = 1
+        beta[len(sample)-1] = c[len(sample)-1]
         # recursion
         for t in range(1, len(sample)):
             for i in range(0, self.num_states):
@@ -164,14 +198,15 @@ class HMM:
                     beta[len(sample)-1-t][i] += self.transitions[i][j] * \
                         self.emissions[j][sample[len(
                             sample)-t]] * beta[len(sample)-t][j]
+            beta[len(sample)-1-t] *= c[len(sample)-1-t]
         return beta
 
     # Uses alpha and beta values to calculate
     # e[t][i][j] = Probability of being in state i at time t and state j at time t+1
     # y[t][j] = Probability of being in state j at time t
     def e_step(self, sample):
-        alpha = self.forward(sample)
-        beta = self.backward(sample)
+        alpha, c = self.forward(sample)
+        beta = self.backward(sample, c)
         y = np.zeros((len(sample), self.num_states))
         e = np.zeros((len(sample), self.num_states, self.num_states))
         for t in range(1, len(sample)):
