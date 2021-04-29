@@ -101,6 +101,10 @@ class HMM:
 
         return max_val, path_trace
 
+    # Normalizes a row in the matrix
+    def normalize(self, row):
+        return np.true_divide(row, np.sum(row))
+
     # given the integer representation of a single sequence
     # return a T x num_states matrix of alpha where T is the total number of tokens in a single sequence
     def forward(self, sample):
@@ -108,12 +112,15 @@ class HMM:
         # initialization
         for j in range(0, self.num_states):
             alpha[0][j] = self.pi[j] * self.emissions[j][sample[0]]
+
+        alpha[0] = self.normalize(alpha[0])
         # recursion
         for t in range(1, len(sample)):
             for j in range(0, self.num_states):
                 for i in range(0, self.num_states):
                     alpha[t][j] += alpha[t-1][i] * \
                         self.transitions[i][j] * self.emissions[j][sample[t]]
+            alpha[t] = self.normalize(alpha[t])
         return alpha
 
     # given the integer representation of a single sequence
@@ -123,6 +130,8 @@ class HMM:
         # initialization
         for i in range(0, self.num_states):
             beta[len(sample)-1][i] = 1
+
+        beta[len(sample)-1] = self.normalize(beta[len(sample)-1])
         # recursion
         for t in range(1, len(sample)):
             for i in range(0, self.num_states):
@@ -130,6 +139,7 @@ class HMM:
                     beta[len(sample)-1-t][i] += self.transitions[i][j] * \
                         self.emissions[j][sample[len(
                             sample)-t]] * beta[len(sample)-t][j]
+            beta[len(sample)-1-t] = self.normalize(beta[len(sample)-1-t])
         return beta
 
     # Uses alpha and beta values to calculate
@@ -138,18 +148,27 @@ class HMM:
     def e_step(self, sample):
         alpha = self.forward(sample)
         beta = self.backward(sample)
+
+        print("alpha", alpha)
+        print("beta", beta)
         y = np.zeros((len(sample), self.num_states))
         e = np.zeros((len(sample), self.num_states, self.num_states))
-        for t in range(1, len(sample)):
+        for t in range(0, len(sample)):
             den = 0
             for j in range(0, self.num_states):
                 den += alpha[t][j] * beta[t][j]
             for j in range(0, self.num_states):
-                y[t][j] = (alpha[t][j] * beta[t][j])/den
+                if den == 0:
+                    y[t][j] = 1
+                else:
+                    y[t][j] = (alpha[t][j] * beta[t][j])/den
                 for i in range(0, self.num_states):
                     if t != len(sample) - 1:
-                        e[t][j][i] = (alpha[t][i] * self.transitions[i]
-                                      [j] * self.emissions[j][t+1] * beta[t+1][j])/den
+                        if den == 0:
+                            e[t][j][i] = 1
+                        else:
+                            e[t][j][i] = (alpha[t][i] * self.transitions[i]
+                                          [j] * self.emissions[j][t+1] * beta[t+1][j])/den
         return y, e
 
     # Tunes transitions
@@ -162,7 +181,10 @@ class HMM:
                     num += e[t][i][j]
                     for k in range(0, self.num_states):
                         den += e[t][i][k]
-                self.transitions[i][j] = num/den
+                if den == 0:
+                    self.transitions[i][j] = 1
+                else:
+                    self.transitions[i][j] = num/den
 
     # Tunes emissions
     def tune_emissions(self, sample, y, e):
@@ -171,11 +193,14 @@ class HMM:
             for vk in range(1, self.vocab_size + 1):
                 den = 0
                 num = 0
-                for t in range(1, len(sample)):
+                for t in range(0, len(sample)):
                     den += y[t][j]
                     if vk == sample[t]:
                         num += y[t][j]
-                self.emissions[j][vk-1] = num/den
+                if den == 0:
+                    self.emissions[j][vk-1] = 1
+                else:
+                    self.emissions[j][vk-1] = num/den
 
     # Uses the e and y matrices from the e_step to tune transition and emission probabilities
     def m_step(self, sample, y, e):
@@ -192,10 +217,12 @@ class HMM:
         print(self.emissions)
         i = 0
         for sample in dataset:
-            if i == 100:
+            print("Starting i ==", i)
+            if i == 1:
                 break
             y, e = self.e_step(sample)
             self.m_step(sample, y, e)
+            print("Ending i ==", i)
             i += 1
         print("After EM")
         print(self.transitions)
