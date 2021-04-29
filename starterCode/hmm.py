@@ -240,16 +240,16 @@ def main():
     train_paths = [postrain, negtrain]
 
     # Create vocab and get its size. word_vocab is a dictionary from words to integers. Ex: 'painful':2070
-    word_vocab = build_vocab_words(train_paths[0:3])
+    word_vocab = build_vocab_words(train_paths)
     vocab_size = len(word_vocab)
 
-    dataset = load_and_convert_data_words_to_ints(train_paths[0:3], word_vocab)
+    dataset = load_and_convert_data_words_to_ints(train_paths, word_vocab)
     # Create model
 
     model = HMM(args.hidden_states, vocab_size)
-    max_val, path_trace = model.viterbi(dataset[0])
-    print(max_val)
-    print(path_trace)
+    max_val, path_trace = model.viterbi(dataset[0])  # just to test
+    # print(max_val)
+    # print(path_trace)
     # model.em_step(dataset)
 
 
