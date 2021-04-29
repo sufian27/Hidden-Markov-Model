@@ -43,6 +43,7 @@ class HMM:
 
     # return the loglikelihood for a complete dataset (train OR test) (list of matrices)
     # TODO: calculate mean log likelihood
+
     def loglikelihood(self, dataset):
         pass
 
@@ -51,17 +52,45 @@ class HMM:
     def loglikelihood_helper(self, sample):
         pass
 
+    # given a sequence of observations (single array of numbers) with blanks at the end (represented by -99),
+    # find the most probable path of hidden states for given observations including blanks
+    # and then predict best words that can go into the blanks
+    def predict_with_viterbi(self, sample, num_words_into_future):
+        sample_with_blanks = np.zeros(
+            len(sample)+num_words_into_future, np.intc)
+        for i in range(0, len(sample)):
+            sample_with_blanks[i] = sample[i]
+        for i in range(len(sample), len(sample)+num_words_into_future):
+            sample_with_blanks[i] = 0  # blank added at end
+        max_value, path_trace = self.viterbi(sample_with_blanks)
+        most_recent_state = path_trace[len(path_trace)-1]
+        # predict this many times into the future
+        for i in range(0, num_words_into_future):
+            random_num = np.random.rand(1)[0]
+            # find most probable transition state
+            best_state_to_go_into = np.argmax(
+                self.transitions[most_recent_state])
+            best_word_to_fill_blank = np.argmax(
+                self.emissions[best_state_to_go_into])
+            most_recent_state = best_state_to_go_into
+            sample_with_blanks[len(sample)+i] = best_word_to_fill_blank
+        return sample_with_blanks
+
     # given a sequence of observations (single array of numbers), find the most probable path of hidden states it could have followed
+
     def viterbi(self, sample):
         # Dimenstions of v are TxN where T=number of observations, N=number of hidden states
-        print(sample)
         v = np.zeros((len(sample), self.num_states))
         # Dimenstions of backpointer are TxN where T=number of observations, N=number of hidden states
         backpointer = np.zeros((len(sample), self.num_states))
         for t in range(0, len(sample)):
             for j in range(0, self.num_states):
-                v[t][j] = self.pi[j] * \
-                    self.emissions[j][sample[0]]  # pi_j * bj(o1)
+                if(sample[0] == -99):  # blank then emission is random b/w 0 and 1
+                    v[t][j] = self.pi[j] * \
+                        np.random.rand(1)[0]  # pi_j * bj(o1)
+                else:
+                    v[t][j] = self.pi[j] * \
+                        self.emissions[j][sample[0]]  # pi_j * bj(o1)
         max_v_prev = -99
         prev_state_selected = 0
 
@@ -73,7 +102,13 @@ class HMM:
                     if(v[t-1][i]*self.transitions[i][j] > max_v_prev):  # we need max v_t-1 (i) *aij
                         max_v_prev = v[t-1][i]*self.transitions[i][j]
                         prev_state_selected = i
-                v[t][j] = max_v_prev * self.emissions[j][sample[t]]
+
+                # find best value of v for each hidden state in this time step
+                if(sample[0] == -99):  # blank then emission israndom b/w 0 and 1
+                    v[t][j] = max_v_prev * np.random.rand(1)[0]
+                else:
+                    v[t][j] = max_v_prev * self.emissions[j][sample[t]]
+
                 backpointer[t][j] = prev_state_selected
 
         # Find value and indices of best v value for time T (final time)
@@ -87,13 +122,11 @@ class HMM:
 
         # intialize path trace array
         # preparing array to build path of hidden states to output
-        path_trace = np.zeros(len(sample), np.int32)
+        path_trace = np.zeros(len(sample), np.intc)
         # start back trace by adding to the end, the best_state for for time T in previous state
         path_trace[len(path_trace)-1] = best_state
         # run backtrace
         index = len(path_trace)-2
-        print(path_trace[index+1])
-        print(time)
         while(index >= 0):
             # backpointer[current_time][state of the next node in path]
             path_trace[index] = backpointer[time][path_trace[index+1]]
@@ -202,6 +235,12 @@ class HMM:
     def complete_sequence(self, sample, steps):
         pass
 
+    def translate_int_to_words(self, sample, int_to_word_map):
+        answer = []
+        for i in range(0, len(sample)):
+            answer.append(int_to_word_map.get(sample[i]))
+        return answer
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -240,16 +279,15 @@ def main():
     train_paths = [postrain, negtrain]
 
     # Create vocab and get its size. word_vocab is a dictionary from words to integers. Ex: 'painful':2070
-    word_vocab = build_vocab_words(train_paths)
+    word_vocab, int_to_word_map = build_vocab_words(train_paths)
     vocab_size = len(word_vocab)
-
     dataset = load_and_convert_data_words_to_ints(train_paths, word_vocab)
     # Create model
 
     model = HMM(args.hidden_states, vocab_size)
-    max_val, path_trace = model.viterbi(dataset[0])  # just to test
-    # print(max_val)
-    # print(path_trace)
+    sample_with_predictions_added = model.predict_with_viterbi(dataset[0], 5)
+    print(model.translate_int_to_words(
+        sample_with_predictions_added, int_to_word_map))
     # model.em_step(dataset)
 
 
