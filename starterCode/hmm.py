@@ -6,6 +6,7 @@ import os
 import argparse
 import numpy as np
 from nlputil import *   # utility methods for working with text
+import random
 
 # A utility class for bundling together relevant parameters - you may modify if you like.
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -293,27 +294,21 @@ class HMM:
     # apply a single step of the em algorithm to the model on all the training data,
     # which is most likely a python list of numpy matrices (one per sample).
     # Note: you may find it helpful to write helper methods for the e-step and m-step,
-    def em_step(self, dataset):
+    def em_step(self, sample_size, dataset):
         # Takes out a sample from the dataset and does e_step and m_step
-        print("Before EM")
+        # print("Before EM")
         # print(self.transitions)
         # print(self.emissions)
-        i = 0
-        j = 0
-        for i in range(0, 10):
-            print(">>>>>>>>>>>>>Starting i ==", i)
-            print(len(dataset))
-            for sample in dataset:
-                j += 1
-                y, e = self.e_step(sample)
-                self.m_step(sample, y, e)
-                print("Completed ", j, " out of ", len(
-                    dataset), " samples in this iteration")
 
-                # print(self.transitions)
-                # print(self.emissions)
-            j = 0
-            print(">>>>>>>>>>>>>Ending i ==", i)
+        for i in range(0, sample_size):
+            rnd = random.randint(0, len(dataset)-1)  # Pick a random sample
+            sample = dataset[rnd]
+            y, e = self.e_step(sample)
+            self.m_step(sample, y, e)
+            print("Completed ", i, " out of ", len(
+                dataset), " samples in this iteration")
+            print("Transitions", self.transitions)
+            print("Emissions", self.emissions)
             print("Log Likelihood:", self.loglikelihood(dataset))
 
         # print("After EM")
@@ -329,6 +324,10 @@ class HMM:
         for i in range(0, len(sample)):
             answer.append(int_to_word_map.get(sample[i]))
         return answer
+
+    def train(self, iterations, sample_size, dataset):
+        for i in range(0, iterations):
+            self.em_step(sample_size, dataset)
 
 
 def main():
@@ -385,7 +384,7 @@ def main():
     # sample_with_predictions_added, int_to_word_map))
     # loglikelihood = model.loglikelihood(dataset)
     # print(loglikelihood)
-    model.em_step(dataset)
+    model.train(args.max_iters, args.sample_size, dataset)
     # loglikelihood = model.loglikelihood(dataset)
     # print(loglikelihood)
     # print(int_to_word_map.get(0))
