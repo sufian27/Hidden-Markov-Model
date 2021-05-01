@@ -34,19 +34,23 @@ class HMM:
         # Vocab size is the number of unique words
         self.vocab_size = vocab_size
         # Transitions are a KxK matrix where K is the number of hidden states. Initialized randomly between 0 and 1
-        self.transitions = np.random.rand(self.num_states, self.num_states)
+        self.transitions = self.normalize(
+            np.random.rand(self.num_states, self.num_states))
         # pi is vector of size K, also initialized between 0 and 1
-        self.pi = np.random.rand(self.num_states)
+        self.pi = self.normalize_row(np.random.rand(self.num_states))
         # TEMPORARY: Intializing emissions to uniform distribution
-        self.emissions = np.random.uniform(
-            size=(self.num_states, self.vocab_size+1))
+        self.emissions = self.normalize(np.random.uniform(
+            size=(self.num_states, self.vocab_size+1)))
 
     # return the loglikelihood for a complete dataset (train OR test) (list of matrices)
     def loglikelihood(self, dataset):
         mean_loglikelihood = 0
+        count = 0
         for sample in dataset:
+            count += 1
             loglikelihood = self.loglikelihood_helper(sample)
             mean_loglikelihood += loglikelihood
+            # print(count/len(dataset)*100, "%")
         mean_loglikelihood /= len(dataset)
         return mean_loglikelihood
 
@@ -56,8 +60,21 @@ class HMM:
         loglikelihood = 0
         for c_t in c:
             loglikelihood += np.log(c_t)
+            # print("c_t", c_t)
+            # print("log(c_t)", np.log(c_t))
+        # print("LL",loglikelihood)
         loglikelihood = -loglikelihood
+        # print("LL",loglikelihood)
         return loglikelihood
+
+    def normalize(self, matrix):
+        for i in range(0, matrix.shape[0]):
+            matrix[i] = self.normalize_row(matrix[i])
+        return matrix
+
+    # Normalizes a row in the matrix
+    def normalize_row(self, row):
+        return np.true_divide(row, np.sum(row))
 
     # return a prediction of next n words of a sequence by evaluating likelihoods
     # possible bug: because we are calculating *log* likelihoods we may want to minimize it instead of maximize it
@@ -173,21 +190,26 @@ class HMM:
         for j in range(0, self.num_states):
             alpha[0][j] = np.longdouble(
                 self.pi[j] * self.emissions[j][sample[0]])
+            # print("c[0]", c[0], "alpha[0][j]", alpha[0][j])
             c[0] += alpha[0][j]
+        # print("c[0] before", c[0])
         c[0] = 1/c[0]
+        # print("c[0] after", c[0])
         alpha[0] *= c[0]
         # print("alpha[0]", alpha[0])
         # recursion
         for t in range(1, len(sample)):
             for j in range(0, self.num_states):
                 for i in range(0, self.num_states):
-
                     alpha[t][j] += np.longdouble(alpha[t-1][i] *
                                                  self.transitions[i][j] * self.emissions[j][sample[t]])
+                # print("c[t]", c[t], "alpha[t][j]", alpha[t][j])
                 c[t] += alpha[t][j]
+            # print("c[t] before", c[t])
             c[t] = 1/c[t]
+            # print("c[t] after", c[t])
             alpha[t] *= c[t]
-            # print("alpha["+str(t)+"]", alpha[t])
+            # print("alpha["+str(t)+"]",alpha[t])
         return alpha, c
 
     # given the integer representation of a single sequence
@@ -201,8 +223,7 @@ class HMM:
             for i in range(0, self.num_states):
                 for j in range(0, self.num_states):
                     beta[len(sample)-1-t][i] += np.longdouble(self.transitions[i][j] *
-                                                              self.emissions[j][sample[len(
-                                                                  sample)-t]] * beta[len(sample)-t][j])
+                                                              self.emissions[j][sample[len(sample)-t]] * beta[len(sample)-t][j])
             beta[len(sample)-1-t] *= c[len(sample)-1-t]
             # print("beta["+str(len(sample)-1-t)+"]", beta[len(sample)-1-t])
         return beta
@@ -308,6 +329,8 @@ def main():
                         help='The maximum number of EM iterations (default 30)')
     parser.add_argument('--hidden_states', type=int, default=10,
                         help='The number of hidden states to use. (default 10)')
+    parser.add_argument('--sample_size', type=int, default=100,
+                        help='The max number of samples. (default 100)')
     args = parser.parse_args()
 
     # OVERALL PROJECT ALGORITHM:
@@ -336,14 +359,21 @@ def main():
     # Create vocab and get its size. word_vocab is a dictionary from words to integers. Ex: 'painful':2070
     word_vocab, int_to_word_map = build_vocab_words(train_paths)
     vocab_size = len(word_vocab)
-    dataset = load_and_convert_data_words_to_ints(train_paths, word_vocab)
-    # Create model
+    dataset_complete = load_and_convert_data_words_to_ints(
+        train_paths, word_vocab)
+    dataset = np.random.choice(dataset_complete, size=args.sample_size)
+    # dataset = dataset_complete
 
+    # Create model
     model = HMM(args.hidden_states, vocab_size)
     # sample_with_predictions_added = model.predict_with_viterbi(dataset[0], 5)
     # print(model.translate_int_to_words(
     # sample_with_predictions_added, int_to_word_map))
-    model.em_step(dataset)
+    loglikelihood = model.loglikelihood(dataset)
+    print(loglikelihood)
+    # model.em_step(dataset)
+    # loglikelihood = model.loglikelihood(dataset)
+    # print(loglikelihood)
 
 
 if __name__ == '__main__':
