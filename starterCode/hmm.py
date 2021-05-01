@@ -46,27 +46,82 @@ class HMM:
         # print("emissions", self.emissions)
 
     # return the loglikelihood for a complete dataset (train OR test) (list of matrices)
-    # TODO: calculate mean log likelihood
-
     def loglikelihood(self, dataset):
-        pass
+        mean_loglikelihood = 0
+        for sample in dataset:
+            loglikelihood = self.loglikelihood_helper(sample)
+            mean_loglikelihood += loglikelihood
+        mean_loglikelihood /= len(dataset)
+        return mean_loglikelihood
 
     # return the loglikelihood for a single sequence (numpy matrix)
-    # abdulmoid : i think this ln (p(X| model))? can use alpha beta products here i guess
     def loglikelihood_helper(self, sample):
-        pass
+        alpha, c = self.forward(sample)
+        loglikelihood = 0
+        for c_t in c:
+            loglikelihood += np.log(c_t)
+        loglikelihood = -loglikelihood
+        return loglikelihood
 
-    # given a sequence of observations, find the most probable path of hidden states it could have followed
-    # here sample is the given observations. should be pre-converted to numbers
+    # return a prediction of next n words of a sequence by evaluating likelihoods
+    # possible bug: because we are calculating *log* likelihoods we may want to minimize it instead of maximize it
+    def predict(self, sample, vocab_size, num_words_into_future):
+        pred = sample
+        for i in range(num_words_into_future):
+            pred_step = self.predict_next_word(pred, vocab_size)
+            pred.append(pred_step)
+        return pred
+
+    # return a prediction of the next word of a sequence
+    def predict_next_word(self, sample, vocab_size):
+        pred = 0
+        pred_prob = 0
+        for i in range(1, vocab_size+1):
+            prob = self.loglikelihood_helper(sample.append(i))
+            if prob > pred_prob:
+                pred_prob = prob
+                pred = i
+        return pred
+
+    # given a sequence of observations (single array of numbers) with blanks at the end (represented by -99),
+    # find the most probable path of hidden states for given observations including blanks
+    # and then predict best words that can go into the blanks
+    def predict_with_viterbi(self, sample, num_words_into_future):
+        sample_with_blanks = np.zeros(
+            len(sample)+num_words_into_future, np.intc)
+        for i in range(0, len(sample)):
+            sample_with_blanks[i] = sample[i]
+        for i in range(len(sample), len(sample)+num_words_into_future):
+            sample_with_blanks[i] = 0  # blank added at end
+        max_value, path_trace = self.viterbi(sample_with_blanks)
+        most_recent_state = path_trace[len(path_trace)-1]
+        # predict this many times into the future
+        for i in range(0, num_words_into_future):
+            random_num = np.random.rand(1)[0]
+            # find most probable transition state
+            best_state_to_go_into = np.argmax(
+                self.transitions[most_recent_state])
+            best_word_to_fill_blank = np.argmax(
+                self.emissions[best_state_to_go_into])
+            most_recent_state = best_state_to_go_into
+            sample_with_blanks[len(sample)+i] = best_word_to_fill_blank
+        return sample_with_blanks
+
+    # given a sequence of observations (single array of numbers), find the most probable path of hidden states it could have followed
+
     def viterbi(self, sample):
         # Dimenstions of v are TxN where T=number of observations, N=number of hidden states
-        v = np.zeros(len(sample), self.num_states)
+        v = np.zeros((len(sample), self.num_states))
         # Dimenstions of backpointer are TxN where T=number of observations, N=number of hidden states
-        backpointer = np.zeros(len(sample), self.num_states)
+        backpointer = np.zeros((len(sample), self.num_states))
         for t in range(0, len(sample)):
-            for j in range(0, len(v)):
-                v[t][j] = self.pi[j] * \
-                    self.emissions[j][sample[0]]  # pi_j * bj(o1)
+            for j in range(0, self.num_states):
+                if(sample[0] == -99):  # blank then emission is random b/w 0 and 1
+                    v[t][j] = self.pi[j] * \
+                        np.random.rand(1)[0]  # pi_j * bj(o1)
+                else:
+                    v[t][j] = self.pi[j] * \
+                        self.emissions[j][sample[0]]  # pi_j * bj(o1)
         max_v_prev = -99
         prev_state_selected = 0
 
@@ -78,28 +133,33 @@ class HMM:
                     if(v[t-1][i]*self.transitions[i][j] > max_v_prev):  # we need max v_t-1 (i) *aij
                         max_v_prev = v[t-1][i]*self.transitions[i][j]
                         prev_state_selected = i
-                v[t][j] = max_v_prev * self.emissions[j][sample[t]]
+
+                # find best value of v for each hidden state in this time step
+                if(sample[0] == -99):  # blank then emission israndom b/w 0 and 1
+                    v[t][j] = max_v_prev * np.random.rand(1)[0]
+                else:
+                    v[t][j] = max_v_prev * self.emissions[j][sample[t]]
+
                 backpointer[t][j] = prev_state_selected
 
         # Find value and indices of best v value for time T (final time)
         max_val = -99
-        time = len(sample)  # final time
+        time = len(sample)-1  # final time
         best_state = 0
-        for j in range(0, len(v)):
+        for j in range(0, self.num_states):
             if (v[time][j] > max_val):
                 max_val = v[time][j]
                 best_state = j
 
         # intialize path trace array
         # preparing array to build path of hidden states to output
-        path_trace = np.zeros(len(sample))
+        path_trace = np.zeros(len(sample), np.intc)
         # start back trace by adding to the end, the best_state for for time T in previous state
-        path_trace[len(path_trace)-1] = col
-
+        path_trace[len(path_trace)-1] = best_state
         # run backtrace
         index = len(path_trace)-2
         while(index >= 0):
-            # backpointer[current_time][backpointer of the next node in path]
+            # backpointer[current_time][state of the next node in path]
             path_trace[index] = backpointer[time][path_trace[index+1]]
             time -= 1
             index -= 1
@@ -117,35 +177,35 @@ class HMM:
 
     # given the integer representation of a single sequence
     # return a T x num_states matrix of alpha where T is the total number of tokens in a single sequence
+    # and also return a T x 1 array of c for normalizing alpha, beta and calculating the log likelihood
     def forward(self, sample):
         alpha = np.zeros((len(sample), self.num_states))
+        c = np.zeros((len(sample),))
         # initialization
         for j in range(0, self.num_states):
             # Fix: emission prob for word i is stored at (i-1)th index
-            print(self.pi[j], " * ", self.emissions[j][sample[0].item()-1])
             alpha[0][j] = self.pi[j] * self.emissions[j][sample[0].item()-1]
-
-        alpha[0] = self.normalize_row(alpha[0])
+            c[0] += alpha[0][j]
+        c[0] = 1/c[0]
+        alpha[0] *= c[0]
         # recursion
         for t in range(1, len(sample)):
             for j in range(0, self.num_states):
                 for i in range(0, self.num_states):
                     alpha[t][j] += alpha[t-1][i] * \
-                        self.transitions[i][j] * self.emissions[j][sample[t].item() -
-                                                                   1]  # Fix: emission prob for word i is stored at (i-1)th index
-            print(alpha[t])
-            alpha[t] = self.normalize_row(alpha[t])
-        return alpha
+                        self.transitions[i][j] * self.emissions[j][sample[t].item(
+                        ) - 1]  # Fix: emission prob for word i is stored at (i-1)th index
+                c[t] += alpha[t][j]
+            c[t] = 1/c[t]
+            alpha[t] *= c[t]
+        return alpha, c
 
     # given the integer representation of a single sequence
     # return a T x num_state matrix of beta where T is the total number of tokens in a single sequence
-    def backward(self, sample):
+    def backward(self, sample, c):
         beta = np.zeros((len(sample), self.num_states))
         # initialization
-        for i in range(0, self.num_states):
-            beta[len(sample)-1][i] = 1
-
-        beta[len(sample)-1] = self.normalize_row(beta[len(sample)-1])
+        beta[len(sample)-1] = c[len(sample)-1]
         # recursion
         for t in range(1, len(sample)):
             for i in range(0, self.num_states):
@@ -153,17 +213,15 @@ class HMM:
                     beta[len(sample)-1-t][i] += self.transitions[i][j] * \
                         self.emissions[j][sample[len(
                             sample)-t].item()-1] * beta[len(sample)-t][j]  # Fix: emission prob for word i is stored at (i-1)th index
-            beta[len(sample)-1-t] = self.normalize_row(beta[len(sample)-1-t])
+            beta[len(sample)-1-t] *= c[len(sample)-1-t]
         return beta
 
     # Uses alpha and beta values to calculate
     # e[t][i][j] = Probability of being in state i at time t and state j at time t+1
     # y[t][j] = Probability of being in state j at time t
     def e_step(self, sample):
-        alpha = self.forward(sample)
-        beta = self.backward(sample)
-        # print("alpha", alpha)
-        # print("beta", beta)
+        alpha, c = self.forward(sample)
+        beta = self.backward(sample, c)
         y = np.zeros((len(sample), self.num_states))
         e = np.zeros((len(sample), self.num_states, self.num_states))
         for t in range(0, len(sample)):
@@ -236,6 +294,12 @@ class HMM:
     def complete_sequence(self, sample, steps):
         pass
 
+    def translate_int_to_words(self, sample, int_to_word_map):
+        answer = []
+        for i in range(0, len(sample)):
+            answer.append(int_to_word_map.get(sample[i]))
+        return answer
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -274,11 +338,15 @@ def main():
     train_paths = [postrain, negtrain]
 
     # Create vocab and get its size. word_vocab is a dictionary from words to integers. Ex: 'painful':2070
-    word_vocab = build_vocab_words(train_paths)
+    word_vocab, int_to_word_map = build_vocab_words(train_paths)
     vocab_size = len(word_vocab)
     dataset = load_and_convert_data_words_to_ints(train_paths, word_vocab)
     # Create model
+
     model = HMM(args.hidden_states, vocab_size)
+    # sample_with_predictions_added = model.predict_with_viterbi(dataset[0], 5)
+    # print(model.translate_int_to_words(
+    #     sample_with_predictions_added, int_to_word_map))
     model.em_step(dataset)
 
 

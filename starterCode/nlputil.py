@@ -35,6 +35,7 @@ import sys
 # paths -- a list of paths to directories containing data.  paths represented as strings)
 def build_vocab_words(paths):
     vocab = {}
+    int_to_word_map = {}
     nextValue = 1
     for path in paths:
         for filename in os.listdir(path):
@@ -43,8 +44,9 @@ def build_vocab_words(paths):
                 for token in sequence.split():
                     if token not in vocab:
                         vocab[token] = nextValue
+                        int_to_word_map[nextValue] = token
                         nextValue += 1
-    return vocab
+    return vocab, int_to_word_map
 
 # Same as above, but for character models.
 
