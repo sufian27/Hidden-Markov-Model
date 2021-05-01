@@ -212,7 +212,7 @@ class HMM:
     def e_step(self, sample):
         alpha, c = self.forward(sample)
         beta = self.backward(sample, c)
-        print()
+        print("alpha", alpha)
         print("beta", beta)
         y = np.zeros((len(sample), self.num_states))
         e = np.zeros((len(sample), self.num_states, self.num_states))
