@@ -214,7 +214,7 @@ class HMM:
         y = np.zeros((len(sample), self.num_states))
         e = np.zeros((len(sample), self.num_states, self.num_states))
         print(beta)
-        for t in range(1, len(sample)):
+        for t in range(0, len(sample)):
             den = 0
             for j in range(0, self.num_states):
                 den += alpha[t][j] * beta[t][j]
