@@ -238,16 +238,16 @@ class HMM:
         y = np.zeros((len(sample), self.num_states))
         e = np.zeros((len(sample), self.num_states, self.num_states))
         # print(beta)
-        for t in range(0, len(sample)):
-            den = 0
+        for t in range(0, len(sample)-1):
             for j in range(0, self.num_states):
-                den += alpha[t][j] * beta[t][j]
-            for j in range(0, self.num_states):
-                y[t][j] = (alpha[t][j] * beta[t][j])/den
+                y[t][j] = 0
                 for i in range(0, self.num_states):
-                    if t != len(sample) - 1:
-                        e[t][j][i] = (alpha[t][i] * self.transitions[i]
-                                      [j] * self.emissions[j][t+1] * beta[t+1][j])/den
+                    e[t][j][i] = (alpha[t][j] * self.transitions[j]
+                                [i] * self.emissions[i][t+1] * beta[t+1][i])
+                    y[t][j] += e[t][j][i]
+
+        for i in range(0, self.num_state):
+            y[len(sample)-1][i] = alpha[len(sample)-1][i]
         return y, e
 
     # Tunes transitions
