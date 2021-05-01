@@ -309,7 +309,6 @@ class HMM:
                 dataset), " samples in this iteration")
             print("Transitions", self.transitions)
             print("Emissions", self.emissions)
-            print("Log Likelihood:", self.loglikelihood(dataset))
 
         # print("After EM")
         # print(self.transitions)
@@ -328,6 +327,7 @@ class HMM:
     def train(self, iterations, sample_size, dataset):
         for i in range(0, iterations):
             self.em_step(sample_size, dataset)
+        print("Log Likelihood:", self.loglikelihood(dataset))
 
 
 def main():
