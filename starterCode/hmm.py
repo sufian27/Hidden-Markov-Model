@@ -252,7 +252,7 @@ class HMM:
                     den += y[t][j]
                     if vk == sample[t]:
                         num += y[t][j]
-                self.emissions[j][vk] = num/den
+                self.emissions[j][vk-1] = num/den
 
     # Uses the e and y matrices from the e_step to tune transition and emission probabilities
     def m_step(self, sample, y, e):
