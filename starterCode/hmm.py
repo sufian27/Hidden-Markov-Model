@@ -171,7 +171,7 @@ class HMM:
         c = np.zeros((len(sample),))
         # initialization
         for j in range(0, self.num_states):
-            alpha[0][j] = self.pi[j] * self.emissions[j][sample[0]]
+            alpha[0][j] = np.longdouble(self.pi[j] * self.emissions[j][sample[0]])s
             c[0] += alpha[0][j]
         c[0] = 1/c[0]
         alpha[0] *= c[0] 
@@ -179,8 +179,8 @@ class HMM:
         for t in range(1, len(sample)):
             for j in range(0, self.num_states):
                 for i in range(0, self.num_states):
-                    alpha[t][j] += alpha[t-1][i] * \
-                        self.transitions[i][j] * self.emissions[j][sample[t]]
+                    alpha[t][j] += np.longdouble(alpha[t-1][i] * \
+                        self.transitions[i][j] * self.emissions[j][sample[t]])
                 c[t] += alpha[t][j]
             c[t] = 1/c[t]
             alpha[t] *= c[t]
@@ -196,9 +196,9 @@ class HMM:
         for t in range(1, len(sample)):
             for i in range(0, self.num_states):
                 for j in range(0, self.num_states):
-                    beta[len(sample)-1-t][i] += self.transitions[i][j] * \
+                    beta[len(sample)-1-t][i] += np.longdouble(self.transitions[i][j] * \
                         self.emissions[j][sample[len(
-                            sample)-t]] * beta[len(sample)-t][j]
+                            sample)-t]] * beta[len(sample)-t][j])
             beta[len(sample)-1-t] *= c[len(sample)-1-t]
         return beta
 
