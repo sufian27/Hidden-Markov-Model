@@ -40,7 +40,7 @@ class HMM:
         self.pi = self.normalize_row(np.random.rand(self.num_states))
         # TEMPORARY: Intializing emissions to uniform distribution
         self.emissions = self.normalize(np.random.uniform(
-            size=(self.num_states, self.vocab_size+1)))
+            size=(self.num_states, self.vocab_size)))
 
     # return the loglikelihood for a complete dataset (train OR test) (list of matrices)
     def loglikelihood(self, dataset):
@@ -261,13 +261,24 @@ class HMM:
                         den += e[t][i][k]
                 self.transitions[i][j] = num/den
 
+    def tune_transitions_new(self, sample, y, e):
+        for i in range(0, self.num_states):
+            den = 0
+            for t in range(0, len(sample)-1):
+                den += y[t][i]
+            for j in range(0, self.num_states):
+                num = 0
+                for t in range(0, len(sample) - 1):
+                    num += e[t][i][j]
+            self.transitions[i][j] = num/den
+
     # Tunes emissions
     def tune_emissions(self, sample, y, e):
         for j in range(0, self.num_states):
             den = 0
             for t in range(0, len(sample)):
                 den += y[t][j]
-            for vk in range(1, self.vocab_size + 1):
+            for vk in range(0, self.vocab_size):  # AbdulMoid Change Here.
                 num = 0.001
                 for t in range(0, len(sample)):
                     if vk == sample[t]:
@@ -276,7 +287,7 @@ class HMM:
 
     # Uses the e and y matrices from the e_step to tune transition and emission probabilities
     def m_step(self, sample, y, e):
-        self.tune_transitions(sample, y, e)
+        self.tune_transitions_new(sample, y, e)
         self.tune_emissions(sample, y, e)
 
     # apply a single step of the em algorithm to the model on all the training data,
@@ -298,8 +309,10 @@ class HMM:
                 self.m_step(sample, y, e)
                 print("Completed ", j, " out of ", len(
                     dataset), " samples in this iteration")
+
                 # print(self.transitions)
                 # print(self.emissions)
+            j = 0
             print(">>>>>>>>>>>>>Ending i ==", i)
             print("Log Likelihood:", self.loglikelihood(dataset))
 
@@ -361,7 +374,8 @@ def main():
     vocab_size = len(word_vocab)
     dataset_complete = load_and_convert_data_words_to_ints(
         train_paths, word_vocab)
-    dataset = np.random.choice(dataset_complete, size=args.sample_size)
+    dataset = dataset_complete
+    # dataset = np.random.choice(dataset_complete, size=args.sample_size)
     # dataset = dataset_complete
 
     # Create model
@@ -369,11 +383,12 @@ def main():
     # sample_with_predictions_added = model.predict_with_viterbi(dataset[0], 5)
     # print(model.translate_int_to_words(
     # sample_with_predictions_added, int_to_word_map))
-    loglikelihood = model.loglikelihood(dataset)
-    print(loglikelihood)
-    # model.em_step(dataset)
     # loglikelihood = model.loglikelihood(dataset)
     # print(loglikelihood)
+    model.em_step(dataset)
+    # loglikelihood = model.loglikelihood(dataset)
+    # print(loglikelihood)
+    # print(int_to_word_map.get(0))
 
 
 if __name__ == '__main__':

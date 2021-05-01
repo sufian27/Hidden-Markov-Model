@@ -36,7 +36,7 @@ import sys
 def build_vocab_words(paths):
     vocab = {}
     int_to_word_map = {}
-    nextValue = 1
+    nextValue = 0
     for path in paths:
         for filename in os.listdir(path):
             with open(os.path.join(path, filename), encoding='utf-8') as fh:
