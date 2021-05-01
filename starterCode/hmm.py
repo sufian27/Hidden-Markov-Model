@@ -232,7 +232,7 @@ class HMM:
             for j in range(0, self.num_states):
                 num = 0
                 den = 0
-                for t in range(1, len(sample) - 1):
+                for t in range(0, len(sample) - 1):
                     num += e[t][i][j]
                     for k in range(0, self.num_states):
                         den += e[t][i][k]
@@ -241,14 +241,15 @@ class HMM:
     # Tunes emissions
     def tune_emissions(self, sample, y, e):
         for j in range(0, self.num_states):
+            den = 0
+            for t in range(0, len(sample)):
+                den += y[t][j]
             for vk in range(1, self.vocab_size + 1):
-                den = 0
-                num = 0
-                for t in range(1, len(sample)):
-                    den += y[t][j]
+                num = 0.001
+                for t in range(0, len(sample)):
                     if vk == sample[t]:
                         num += y[t][j]
-                self.emissions[j][vk] = num/den
+                self.emissions[j][vk-1] = num/den
 
     # Uses the e and y matrices from the e_step to tune transition and emission probabilities
     def m_step(self, sample, y, e):
