@@ -39,7 +39,7 @@ class HMM:
         self.pi = np.random.rand(self.num_states)
         # TEMPORARY: Intializing emissions to uniform distribution
         self.emissions = np.random.uniform(
-            size=(self.num_states, self.vocab_size))
+            size=(self.num_states, self.vocab_size+1))
 
     # return the loglikelihood for a complete dataset (train OR test) (list of matrices)
     def loglikelihood(self, dataset):
@@ -60,7 +60,7 @@ class HMM:
         return loglikelihood
 
     # return a prediction of next n words of a sequence by evaluating likelihoods
-    # possible bug: because we are calculating *log* likelihoods we may want to minimize it instead of maximize it 
+    # possible bug: because we are calculating *log* likelihoods we may want to minimize it instead of maximize it
     def predict(self, sample, vocab_size, num_words_into_future):
         pred = sample
         for i in range(num_words_into_future):
@@ -68,7 +68,7 @@ class HMM:
             pred.append(pred_step)
         return pred
 
-    # return a prediction of the next word of a sequence 
+    # return a prediction of the next word of a sequence
     def predict_next_word(self, sample, vocab_size):
         pred = 0
         pred_prob = 0
@@ -171,21 +171,23 @@ class HMM:
         c = np.zeros((len(sample),))
         # initialization
         for j in range(0, self.num_states):
-            alpha[0][j] = np.longdouble(self.pi[j] * self.emissions[j][sample[0]])
+            alpha[0][j] = np.longdouble(
+                self.pi[j] * self.emissions[j][sample[0]])
             c[0] += alpha[0][j]
         c[0] = 1/c[0]
         alpha[0] *= c[0]
-        print("alpha[0]", alpha[0])
+        # print("alpha[0]", alpha[0])
         # recursion
         for t in range(1, len(sample)):
             for j in range(0, self.num_states):
                 for i in range(0, self.num_states):
-                    alpha[t][j] += np.longdouble(alpha[t-1][i] * \
-                        self.transitions[i][j] * self.emissions[j][sample[t]])
+
+                    alpha[t][j] += np.longdouble(alpha[t-1][i] *
+                                                 self.transitions[i][j] * self.emissions[j][sample[t]])
                 c[t] += alpha[t][j]
             c[t] = 1/c[t]
             alpha[t] *= c[t]
-            print("alpha["+str(t)+"]",alpha[t])
+            # print("alpha["+str(t)+"]", alpha[t])
         return alpha, c
 
     # given the integer representation of a single sequence
@@ -198,11 +200,11 @@ class HMM:
         for t in range(1, len(sample)):
             for i in range(0, self.num_states):
                 for j in range(0, self.num_states):
-                    beta[len(sample)-1-t][i] += np.longdouble(self.transitions[i][j] * \
-                        self.emissions[j][sample[len(
-                            sample)-t]] * beta[len(sample)-t][j])
+                    beta[len(sample)-1-t][i] += np.longdouble(self.transitions[i][j] *
+                                                              self.emissions[j][sample[len(
+                                                                  sample)-t]] * beta[len(sample)-t][j])
             beta[len(sample)-1-t] *= c[len(sample)-1-t]
-            print("beta["+str(len(sample)-1-t)+"]", beta[len(sample)-1-t])
+            # print("beta["+str(len(sample)-1-t)+"]", beta[len(sample)-1-t])
         return beta
 
     # Uses alpha and beta values to calculate
@@ -213,7 +215,7 @@ class HMM:
         beta = self.backward(sample, c)
         y = np.zeros((len(sample), self.num_states))
         e = np.zeros((len(sample), self.num_states, self.num_states))
-        print(beta)
+        # print(beta)
         for t in range(0, len(sample)):
             den = 0
             for j in range(0, self.num_states):
@@ -262,22 +264,27 @@ class HMM:
     def em_step(self, dataset):
         # Takes out a sample from the dataset and does e_step and m_step
         print("Before EM")
-        print(self.transitions)
-        print(self.emissions)
+        # print(self.transitions)
+        # print(self.emissions)
         i = 0
-        for sample in dataset:
+        j = 0
+        for i in range(0, 10):
             print(">>>>>>>>>>>>>Starting i ==", i)
-            if i == 3:
-                break
-            y, e = self.e_step(sample)
-            self.m_step(sample, y, e)
-            print(self.transitions)
-            print(self.emissions)
+            print(len(dataset))
+            for sample in dataset:
+                j += 1
+                y, e = self.e_step(sample)
+                self.m_step(sample, y, e)
+                print("Completed ", j, " out of ", len(
+                    dataset), " samples in this iteration")
+                # print(self.transitions)
+                # print(self.emissions)
             print(">>>>>>>>>>>>>Ending i ==", i)
-            i += 1
-        print("After EM")
-        print(self.transitions)
-        print(self.emissions)
+            print("Log Likelihood:", self.loglikelihood(dataset))
+
+        # print("After EM")
+        # print(self.transitions)
+        # print(self.emissions)
 
     # Return a "completed" sample by additing additional steps based on model probability.
     def complete_sequence(self, sample, steps):
@@ -335,7 +342,7 @@ def main():
     model = HMM(args.hidden_states, vocab_size)
     # sample_with_predictions_added = model.predict_with_viterbi(dataset[0], 5)
     # print(model.translate_int_to_words(
-        # sample_with_predictions_added, int_to_word_map))
+    # sample_with_predictions_added, int_to_word_map))
     model.em_step(dataset)
 
 
