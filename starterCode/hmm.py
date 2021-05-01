@@ -81,6 +81,7 @@ class HMM:
             if prob > pred_prob:
                 pred_prob = prob
                 pred = i
+            del sample[-1]
         return pred
 
     # given a sequence of observations (single array of numbers) with blanks at the end (represented by -99),
