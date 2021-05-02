@@ -50,9 +50,9 @@ def build_vocab_words(paths, sample_size):
                             int_to_word_map[nextValue] = token
                             nextValue += 1
                 count += 1
-            if count == sample_size:
+            if count == sample_size/2:
                 break
-        if count == sample_size:
+        if count == sample_size/2:
                 break
     print("finished")
     return vocab, int_to_word_map
@@ -146,9 +146,9 @@ def load_and_convert_data_words_to_ints(paths, vocab, sample_size):
                 if len(sample) > 0 and len(sample) < 250:
                     data.append(sample)
                     count += 1
-            if count == sample_size:
+            if count == sample_size/2:
                 break
-        if count == sample_size:
+        if count == sample_size/2:
                 break
     print("finished")
     return data

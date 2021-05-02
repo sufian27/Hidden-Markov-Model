@@ -453,9 +453,9 @@ def main():
                         help='Path to the development data directory.')
     parser.add_argument('--max_iters', type=int, default=20,
                         help='The maximum number of EM iterations (default 30)')
-    parser.add_argument('--hidden_states', type=int, default=5,
+    parser.add_argument('--hidden_states', type=int, default=10,
                         help='The number of hidden states to use. (default 10)')
-    parser.add_argument('--sample_size', type=int, default=2,
+    parser.add_argument('--sample_size', type=int, default=10,
                         help='The max number of samples. (default 100)')
     args = parser.parse_args()
 
@@ -506,16 +506,10 @@ def main():
     # print(loglikelihood)
     # print(int_to_word_map.get(0))
     # give it sample and a number. It will return a new sample with predicted words appended to the end.
-    # prediction_with_v = model.predict_with_viterbi(
-    # dataset[2][0:len(dataset[2])-8], 5)
-    # print(model.translate_int_to_words(prediction_with_v, int_to_word_map))
-    # model.predict_with_viterbo(sample, 5)
+    # model.predict_with_viterbi(sample, 5)
     model.save('modelFile')
 
 
 
 if __name__ == '__main__':
     main()
-
-
-#CMD arg: python hmm.py --train_path ../../imdbFor246/train --hidden_states 5 --sample_size 6 --max_iters
