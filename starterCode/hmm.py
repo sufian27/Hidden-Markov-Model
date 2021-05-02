@@ -243,10 +243,10 @@ class HMM:
                 y[t][j] = 0
                 for i in range(0, self.num_states):
                     e[t][j][i] = (alpha[t][j] * self.transitions[j]
-                                [i] * self.emissions[i][t+1] * beta[t+1][i])
+                                  [i] * self.emissions[i][t+1] * beta[t+1][i])
                     y[t][j] += e[t][j][i]
 
-        for i in range(0, self.num_state):
+        for i in range(0, self.num_states):
             y[len(sample)-1][i] = alpha[len(sample)-1][i]
         return y, e
 
