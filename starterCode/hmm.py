@@ -7,6 +7,9 @@ import argparse
 import numpy as np
 from nlputil import *   # utility methods for working with text
 import random
+from matplotlib import pyplot as plt
+import pickle
+
 
 # A utility class for bundling together relevant parameters - you may modify if you like.
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -91,7 +94,7 @@ class HMM:
         pred = 0
         pred_prob = 0
         for i in range(1, vocab_size+1):
-            prob = self.loglikelihood_helper(sample.append(i))
+            prob = self.loglikelihood_helper(np.append(sample, i))
             if prob > pred_prob:
                 pred_prob = prob
                 pred = i
@@ -238,8 +241,16 @@ class HMM:
     # e[t][i][j] = Probability of being in state i at time t and state j at time t+1
     # y[t][j] = Probability of being in state j at time t
     def e_step(self, sample):
+        # print("Sample is ", sample)
         alpha, c = self.forward(sample)
         beta = self.backward(sample, c)
+        # print("Alpha Below ")
+        # print(alpha)
+        # print("Beta Below ")
+        # print(beta)
+        # print("C Below ")
+        # print(c)
+
         y = np.zeros((len(sample), self.num_states))
         e = np.zeros((len(sample), self.num_states, self.num_states))
         # print(beta)
@@ -259,6 +270,10 @@ class HMM:
         # for t in range(0, len(sample)-1):
         #     for erow in e[t]:
         #         print("Sum of row in e", np.sum(erow))
+        # print("Y Below ")
+        # print(y)
+        # print("E Below ")
+        # print(e)
         return y, e
 
     # Tunes transitions
@@ -327,7 +342,12 @@ class HMM:
         neg_count = 0
         for i in range(0, len(prev)):
             for j in range(0, len(prev[i])):
-                if after[i][j] - prev[i][j] > 0:
+                # if np.log(after[i][j]) - np.log(prev[i][j]) == 0:
+                #     # print("NO CHANGE.")
+                # else:
+                #     print("YES CHANGE.")
+
+                if np.log(after[i][j]) - np.log(prev[i][j]) > 0:
                     pos_count += 1
                 else:
                     neg_count += 1
@@ -338,32 +358,45 @@ class HMM:
     # Note: you may find it helpful to write helper methods for the e-step and m-step,
     def em_step(self, sample_size, dataset):
         # Takes out a sample from the dataset and does e_step and m_step
-        print("Before EM")
-        print(self.transitions)
-        print(self.emissions)
-        for transition in self.emissions:
-            print("Sum of row in emissions", np.sum(transition))
-        for i in range(0, sample_size):
-            rnd = random.randint(0, len(dataset)-1)  # Pick a random sample
-            sample = dataset[rnd]
-            transitions = self.transitions
-            emissions = self.emissions
-            y, e = self.e_step(sample)
-            self.m_step(sample, y, e)
-            print("Completed ", i+1, " out of ",
-                  sample_size, " samples in this iteration")
-            # print("Transitions", self.transitions)
-            # print("Emissions", self.emissions)
-            pos_count, neg_count = self.compare_theta(
-                transitions, self.transitions)
-            print("Transitions changes: increase",
-                  pos_count, "decrease", neg_count)
-            pos_count, neg_count = self.compare_theta(
-                emissions, self.emissions)
-            print("Emissions changes: increase",
-                  pos_count, "decrease", neg_count)
+        # print("Before EM. Below are transitions followed by emissions")
+        # print(self.transitions)
+        # # print(self.emissions)
+        # for transition in self.emissions:
+        #     print("Sum of row in emissions", np.sum(transition))
+        sample = []
+        for x in dataset:
+            for string in x:
+                sample.append(string)
+        # mean_loglikelihood = 0.0
+        # for i in range(0, sample_size):
+        #     # rnd = random.randint(0, len(dataset)-1)  # Pick a random sample
+        #     sample = dataset_flattened[i]
 
-        # print("After EM")
+        transitions = np.copy(self.transitions)
+        emissions = np.copy(self.emissions)
+        # print("Started ", i+1, " out of ",
+        #       sample_size, " samples in this iteration")
+        y, e = self.e_step(sample)
+        self.m_step(sample, y, e)
+        # print("Completed ", i+1, " out of ",
+        #       sample_size, " samples in this iteration")
+        # print(
+        #     "Transitions After Em on this sample during this iteration", self.transitions)
+        # print(
+        #     "Emissions After Em on this sample during this iteration", self.emissions)
+        pos_count, neg_count = self.compare_theta(
+            transitions, self.transitions)
+        print("Transitions changes: increase",
+              pos_count, "decrease", neg_count)
+        pos_count, neg_count = self.compare_theta(
+            emissions, self.emissions)
+        print("Emissions changes: increase",
+              pos_count, "decrease", neg_count)
+        # mean_loglikelihood += self.loglikelihood_helper(dataset[i])
+
+        # mean_loglikelihood = mean_loglikelihood/sample_size
+        # return mean_loglikelihood
+        # print("After EM. Below are transitions followed by emissions")
         # print(self.transitions)
         # print(self.emissions)
 
@@ -372,9 +405,9 @@ class HMM:
         pass
 
     def translate_int_to_words(self, sample, int_to_word_map):
-        answer = []
+        answer = ''
         for i in range(0, len(sample)):
-            answer.append(int_to_word_map.get(sample[i]))
+            answer += int_to_word_map.get(sample[i])+' '
         return answer
 
     def train(self, iterations, sample_size, dataset):
@@ -383,8 +416,25 @@ class HMM:
             print("Started ", i+1, " out of ", iterations, " iterations")
             self.em_step(sample_size, dataset)
             print("Completed ", i+1, " out of ", iterations, " iterations")
-            loglikes[i] = self.loglikelihood(dataset)
+            sample = []
+            for x in dataset:
+                for string in x:
+                    sample.append(string)
+            loglikes[i] = self.loglikelihood_helper(sample)/len(dataset)
         print("Log Likelihoods:", loglikes)
+        self.get_figure(range(len(loglikes)), loglikes,
+                        'Iteration', 'Log Likelihood')
+
+    def get_figure(self, xvalues, yvalues, xaxisname, yaxisname):
+        fig = plt.figure()
+        plt.plot(xvalues, yvalues)
+        plt.xlabel(xaxisname)
+        plt.ylabel(yaxisname)
+        plt.savefig('Plot')
+
+    def save(self, filename):
+        with open(filename, 'wb') as fh:
+            pickle.dump(self, fh)
 
 
 def main():
@@ -428,7 +478,8 @@ def main():
     # Create vocab and get its size. word_vocab is a dictionary from words to integers. Ex: 'painful':2070
     # word_vocab, int_to_word_map = build_vocab_words(
     #     train_paths, args.sample_size)
-    word_vocab = build_vocab_chars(train_paths)
+    word_vocab, int_to_word_map = build_vocab_words(
+        train_paths, args.sample_size)
     vocab_size = len(word_vocab)
     dataset_complete = load_and_convert_data_words_to_ints(
         train_paths, word_vocab, args.sample_size)
@@ -443,10 +494,22 @@ def main():
     # sample_with_predictions_added, int_to_word_map))
     # loglikelihood = model.loglikelihood(dataset)
     # print(loglikelihood)
+
     model.train(args.max_iters, len(dataset), dataset)
+
     # loglikelihood = model.loglikelihood(dataset)
     # print(loglikelihood)
     # print(int_to_word_map.get(0))
+    # give it sample and a number. It will return a new sample with predicted words appended to the end.
+    # prediction_simple = model.predict(
+    #     dataset[2][1:len(dataset)-5], vocab_size, 5)
+    # print(model.translate_int_to_words(prediction_simple, int_to_word_map))
+    prediction_with_v = model.predict_with_viterbi(
+        dataset[2][0:len(dataset[2])-8], 5)
+    print(model.translate_int_to_words(prediction_with_v, int_to_word_map))
+    model.predict_with_viterbo(sample, 5)
+
+    model.save('modelFile')
 
 
 if __name__ == '__main__':
