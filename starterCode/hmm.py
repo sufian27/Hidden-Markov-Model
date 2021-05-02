@@ -238,8 +238,16 @@ class HMM:
     # e[t][i][j] = Probability of being in state i at time t and state j at time t+1
     # y[t][j] = Probability of being in state j at time t
     def e_step(self, sample):
+        # print("Sample is ", sample)
         alpha, c = self.forward(sample)
         beta = self.backward(sample, c)
+        # print("Alpha Below ")
+        # print(alpha)
+        # print("Beta Below ")
+        # print(beta)
+        # print("C Below ")
+        # print(c)
+
         y = np.zeros((len(sample), self.num_states))
         e = np.zeros((len(sample), self.num_states, self.num_states))
         # print(beta)
@@ -259,6 +267,10 @@ class HMM:
         # for t in range(0, len(sample)-1):
         #     for erow in e[t]:
         #         print("Sum of row in e", np.sum(erow))
+        # print("Y Below ")
+        # print(y)
+        # print("E Below ")
+        # print(e)
         return y, e
 
     # Tunes transitions
@@ -327,7 +339,12 @@ class HMM:
         neg_count = 0
         for i in range(0, len(prev)):
             for j in range(0, len(prev[i])):
-                if after[i][j] - prev[i][j] > 0:
+                # if np.log(after[i][j]) - np.log(prev[i][j]) == 0:
+                #     # print("NO CHANGE.")
+                # else:
+                #     print("YES CHANGE.")
+
+                if np.log(after[i][j]) - np.log(prev[i][j]) > 0:
                     pos_count += 1
                 else:
                     neg_count += 1
@@ -338,32 +355,45 @@ class HMM:
     # Note: you may find it helpful to write helper methods for the e-step and m-step,
     def em_step(self, sample_size, dataset):
         # Takes out a sample from the dataset and does e_step and m_step
-        print("Before EM")
-        print(self.transitions)
-        print(self.emissions)
-        for transition in self.emissions:
-            print("Sum of row in emissions", np.sum(transition))
-        for i in range(0, sample_size):
-            rnd = random.randint(0, len(dataset)-1)  # Pick a random sample
-            sample = dataset[rnd]
-            transitions = self.transitions
-            emissions = self.emissions
-            y, e = self.e_step(sample)
-            self.m_step(sample, y, e)
-            print("Completed ", i+1, " out of ",
-                  sample_size, " samples in this iteration")
-            # print("Transitions", self.transitions)
-            # print("Emissions", self.emissions)
-            pos_count, neg_count = self.compare_theta(
-                transitions, self.transitions)
-            print("Transitions changes: increase",
-                  pos_count, "decrease", neg_count)
-            pos_count, neg_count = self.compare_theta(
-                emissions, self.emissions)
-            print("Emissions changes: increase",
-                  pos_count, "decrease", neg_count)
+        # print("Before EM. Below are transitions followed by emissions")
+        # print(self.transitions)
+        # # print(self.emissions)
+        # for transition in self.emissions:
+        #     print("Sum of row in emissions", np.sum(transition))
+        sample = []
+        for x in dataset:
+            for string in x:
+                sample.append(string)
+        # mean_loglikelihood = 0.0
+        # for i in range(0, sample_size):
+        #     # rnd = random.randint(0, len(dataset)-1)  # Pick a random sample
+        #     sample = dataset_flattened[i]
 
-        # print("After EM")
+        transitions = np.copy(self.transitions)
+        emissions = np.copy(self.emissions)
+        # print("Started ", i+1, " out of ",
+        #       sample_size, " samples in this iteration")
+        y, e = self.e_step(sample)
+        self.m_step(sample, y, e)
+        # print("Completed ", i+1, " out of ",
+        #       sample_size, " samples in this iteration")
+        # print(
+        #     "Transitions After Em on this sample during this iteration", self.transitions)
+        # print(
+        #     "Emissions After Em on this sample during this iteration", self.emissions)
+        pos_count, neg_count = self.compare_theta(
+            transitions, self.transitions)
+        print("Transitions changes: increase",
+              pos_count, "decrease", neg_count)
+        pos_count, neg_count = self.compare_theta(
+            emissions, self.emissions)
+        print("Emissions changes: increase",
+              pos_count, "decrease", neg_count)
+        # mean_loglikelihood += self.loglikelihood_helper(dataset[i])
+
+        # mean_loglikelihood = mean_loglikelihood/sample_size
+        # return mean_loglikelihood
+        # print("After EM. Below are transitions followed by emissions")
         # print(self.transitions)
         # print(self.emissions)
 
@@ -383,7 +413,11 @@ class HMM:
             print("Started ", i+1, " out of ", iterations, " iterations")
             self.em_step(sample_size, dataset)
             print("Completed ", i+1, " out of ", iterations, " iterations")
-            loglikes[i] = self.loglikelihood(dataset)
+            sample = []
+            for x in dataset:
+                for string in x:
+                    sample.append(string)
+            loglikes[i] = self.loglikelihood_helper(sample)/len(dataset)
         print("Log Likelihoods:", loglikes)
 
 
@@ -428,10 +462,11 @@ def main():
     # Create vocab and get its size. word_vocab is a dictionary from words to integers. Ex: 'painful':2070
     # word_vocab, int_to_word_map = build_vocab_words(
     #     train_paths, args.sample_size)
-    word_vocab = build_vocab_chars(train_paths)
+    word_vocab = build_vocab_chars(
+        train_paths)
     vocab_size = len(word_vocab)
-    dataset_complete = load_and_convert_data_words_to_ints(
-        train_paths, word_vocab, args.sample_size)
+    dataset_complete = load_and_convert_data_chars_to_ints(
+        train_paths, word_vocab)
     dataset = dataset_complete
     # dataset = np.random.choice(dataset_complete, size=args.sample_size)
     # dataset = dataset_complete
