@@ -514,3 +514,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+#CMD arg: python hmm.py --train_path ../../imdbFor246/train --hidden_states 5 --sample_size 6 --max_iters 
