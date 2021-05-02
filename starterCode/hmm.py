@@ -420,6 +420,10 @@ class HMM:
             loglike = self.loglikelihood_helper(sample)/len(dataset)
             if i > 1:
                 if loglike - loglikes[i-1] < epsilon:
+                    self.save(os.path.join(
+                        "../modelFile/", "model" + str(int(i/5))))
+                    self.get_figure(
+                        range(1, i+1), loglikes[0:i], 'Iteration', 'Log Likelihood')
                     break
             loglikes[i] = loglike
             if i % 5 == 0:
@@ -428,8 +432,6 @@ class HMM:
                 self.get_figure(
                     range(1, i+1), loglikes[0:i], 'Iteration', 'Log Likelihood')
         print("Log Likelihoods:", loglikes)
-        self.get_figure(range(len(loglikes)), loglikes,
-                        'Iteration', 'Log Likelihood')
 
     def get_figure(self, xvalues, yvalues, xaxisname, yaxisname):
         fig = plt.figure()
