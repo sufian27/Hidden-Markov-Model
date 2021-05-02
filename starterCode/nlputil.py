@@ -16,7 +16,7 @@ import sys
 #                             (i.e., this maps strings to matrices).
 #
 # There are parallel methods included for working with either word-based or character-based models.
-# In both cases, unknown words will always map to integer value 0. 
+# In both cases, unknown words will always map to integer value 0.
 
 # Note -- File IO is slow, so it's best if you can keep as much data in RAM as possible.
 # Converting to a word-based one-hot representation is EXTREMELY memory intensive (many huge vectors of ints).
@@ -51,14 +51,16 @@ def build_vocab_words(paths, sample_size):
             if count == sample_size:
                 break
         if count == sample_size:
-                break
+            break
     print("finished")
     return vocab, int_to_word_map
 
 # Same as above, but for character models.
+
+
 def build_vocab_chars(paths):
     vocab = {}
-    nextValue = 1
+    nextValue = 0
     for path in paths:
         for filename in os.listdir(path):
             with open(os.path.join(path, filename), encoding='utf-8') as fh:
@@ -76,12 +78,14 @@ def build_vocab_chars(paths):
 # where N is the number of tokens in the sequence.
 def convert_words_to_ints(sample, vocab):
     sequence = sample.split()
-    answer =  np.zeros(len(sequence), dtype=np.uint)
+    answer = np.zeros(len(sequence), dtype=np.uint)
     for n, token in enumerate(sequence):
         answer[n] = vocab.get(token, 0)
     return answer
 
 # Same as above, but for characters.
+
+
 def convert_chars_to_ints(sample, vocab):
     answer = np.zeros(len(sample), dtype=np.uint)
     for n, token in enumerate(sample):
@@ -95,21 +99,23 @@ def convert_chars_to_ints(sample, vocab):
 # size observed on the training data.
 def convert_words_to_onehot(sample, vocab):
     sequence = sample.split()
-    onehot =  np.zeros((len(sequence), len(vocab)+1), dtype=np.uint)
+    onehot = np.zeros((len(sequence), len(vocab)+1), dtype=np.uint)
     for n, token in enumerate(sequence):
         onehot[n, vocab.get(token, 0)] = 1
     return onehot
 
 # Same as above, but for characters.
+
+
 def convert_chars_to_onehot(sample, vocab):
     onehot = np.zeros((len(sample), len(vocab)+1), dtype=np.uint)
     for n, token in enumerate(sample):
-        onehot[n, vocab.get(token, 0)]  = 1
+        onehot[n, vocab.get(token, 0)] = 1
     return onehot
 
 
 # Read every file located at given path, convert to one-hot OR integer representation,
-# and collect the results into a python list. 
+# and collect the results into a python list.
 def load_and_convert_data_words_to_onehot(paths, vocab):
     data = []
     for path in paths:
@@ -119,6 +125,8 @@ def load_and_convert_data_words_to_onehot(paths, vocab):
     return data
 
 # Same as above, but uses a character model
+
+
 def load_and_convert_data_chars_to_onehot(paths, vocab):
     data = []
     for path in paths:
@@ -126,6 +134,7 @@ def load_and_convert_data_chars_to_onehot(paths, vocab):
             with open(os.path.join(path, filename), encoding='utf-8') as fh:
                 data.append(convert_chars_to_onehot(fh.read(), vocab))
     return data
+
 
 def load_and_convert_data_words_to_ints(paths, vocab, sample_size):
     data = []
@@ -140,11 +149,13 @@ def load_and_convert_data_words_to_ints(paths, vocab, sample_size):
             if count == sample_size:
                 break
         if count == sample_size:
-                break
+            break
     print("finished")
     return data
 
 # Same as above, but uses a character model
+
+
 def load_and_convert_data_chars_to_ints(paths, vocab):
     data = []
     for path in paths:
@@ -154,11 +165,9 @@ def load_and_convert_data_chars_to_ints(paths, vocab):
     return data
 
 
-
-    
 if __name__ == '__main__':
-    print("NLP Util smoketest.");
-    paths =  ['../data/imdbFor246/train/pos', '../data/imdbFor246/train/neg']
+    print("NLP Util smoketest.")
+    paths = ['../data/imdbFor246/train/pos', '../data/imdbFor246/train/neg']
     print("Begin loading vocab... ", end='')
     sys.stdout.flush()
     begin = time()
@@ -172,9 +181,7 @@ if __name__ == '__main__':
     end = time()
     print('done in', end-begin, 'seconds.')
 
-
     print("Data[0] = ", data[0])
     print('Press enter to quit.')
     input()
     print('Quitting.. may take some time to free memory.')
-

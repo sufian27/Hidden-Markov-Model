@@ -254,7 +254,11 @@ class HMM:
 
         for i in range(0, self.num_states):
             y[len(sample)-1][i] = alpha[len(sample)-1][i]
-
+        # for yrow in y:
+        #     print("Sum of row in y", np.sum(yrow))
+        # for t in range(0, len(sample)-1):
+        #     for erow in e[t]:
+        #         print("Sum of row in e", np.sum(erow))
         return y, e
 
     # Tunes transitions
@@ -279,6 +283,7 @@ class HMM:
                 for t in range(0, len(sample) - 1):
                     num += e[t][i][j]
                 self.transitions[i][j] = num/den
+        # self.normalize(self.transitions)
 
     # Tunes emissions
     def tune_emissions(self, sample, y, e):
@@ -287,15 +292,16 @@ class HMM:
             for t in range(0, len(sample)):
                 den += y[t][j]
             for vk in range(0, self.vocab_size):
-                num = 0.001
+                num = 0.00000000000001
                 for t in range(0, len(sample)):
                     if vk == sample[t]:
                         num += y[t][j]
                 self.emissions[j][vk] = num/den
+        # self.normalize(self.emissions)
 
     def tune_emissions_new(self, sample, y, e):
-        pseudocount = 0.01
-        dist_inertia = 0.25
+        pseudocount = 0.0
+        dist_inertia = 0.1
         for j in range(0, self.num_states):
             den = 0
             for t in range(0, len(sample)):
@@ -335,8 +341,8 @@ class HMM:
         print("Before EM")
         print(self.transitions)
         print(self.emissions)
-        for emission in self.emissions:
-            print("Sum of row in emissions", np.sum(emission))
+        for transition in self.emissions:
+            print("Sum of row in emissions", np.sum(transition))
         for i in range(0, sample_size):
             rnd = random.randint(0, len(dataset)-1)  # Pick a random sample
             sample = dataset[rnd]
@@ -356,7 +362,6 @@ class HMM:
                 emissions, self.emissions)
             print("Emissions changes: increase",
                   pos_count, "decrease", neg_count)
-            print("Log Likelihood:", self.loglikelihood(dataset))
 
         # print("After EM")
         # print(self.transitions)
@@ -373,11 +378,13 @@ class HMM:
         return answer
 
     def train(self, iterations, sample_size, dataset):
+        loglikes = np.zeros((iterations,))
         for i in range(0, iterations):
             print("Started ", i+1, " out of ", iterations, " iterations")
             self.em_step(sample_size, dataset)
             print("Completed ", i+1, " out of ", iterations, " iterations")
-            print("Log Likelihood:", self.loglikelihood(dataset))
+            loglikes[i] = self.loglikelihood(dataset)
+        print("Log Likelihoods:", loglikes)
 
 
 def main():
@@ -419,8 +426,9 @@ def main():
     train_paths = [postrain, negtrain]
 
     # Create vocab and get its size. word_vocab is a dictionary from words to integers. Ex: 'painful':2070
-    word_vocab, int_to_word_map = build_vocab_words(
-        train_paths, args.sample_size)
+    # word_vocab, int_to_word_map = build_vocab_words(
+    #     train_paths, args.sample_size)
+    word_vocab = build_vocab_chars(train_paths)
     vocab_size = len(word_vocab)
     dataset_complete = load_and_convert_data_words_to_ints(
         train_paths, word_vocab, args.sample_size)
