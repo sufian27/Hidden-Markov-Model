@@ -497,10 +497,14 @@ def main():
 
     postrain = os.path.join(args.train_path, 'pos')
     negtrain = os.path.join(args.train_path, 'neg')
+
     # Combine into list
     train_paths = [postrain, negtrain]
+
     word_vocab, int_to_word_map = build_vocab_words(
         train_paths, args.sample_size)
+
+    vocab_size = len(word_vocab)
 
     if args.train == 1:
         # Paths for positive and negative training data
@@ -508,9 +512,6 @@ def main():
         # Create vocab and get its size. word_vocab is a dictionary from words to integers. Ex: 'painful':2070
         # word_vocab, int_to_word_map = build_vocab_words(
         #     train_paths, args.sample_size)
-        word_vocab, int_to_word_map = build_vocab_words(
-            train_paths, args.sample_size)
-        vocab_size = len(word_vocab)
         dataset_complete = load_and_convert_data_words_to_ints(
             train_paths, word_vocab, args.sample_size)
         dataset = dataset_complete
@@ -553,20 +554,15 @@ def main():
             # Just testing on final model initially --> will actually be = model_list[i]
             filename = model_list[i]
             model = HMM.load(os.path.join(args.model_path, filename))
-            test_data = build_test_samples(train_paths, 50, word_vocab)
+            test_data = build_test_samples(test_paths, 50, word_vocab)
             test_accuracies[i] = model.test(test_data, int_to_word_map)
-            # Flatten data
-            # flatten_data = [j for sub in test_data for j in sub]
-            # flatten_data = [i for i in flatten_data if i != -1]  # Removed UNK
-            # test_likes[i] = model.loglikelihood_helper(
-            #     flatten_data)/len(test_data)
             print("Tested: {}".format(i))
 
-        print(test_likes)
+        model.get_figure(range(1, len(test_accuracies)+1),
+                         test_accuracies, '5 x Nth Iteration', 'Viterbi Accuracy')
+        print(test_accuracies)
 
 
-        #prediction_with_v = model.predict_with_viterbi(dataset[2][0:len(dataset[2])-8], 5)
-        #prediction_with_v = model.predict_with_viterbi(dataset[2][0:len(dataset[2])-8], 5)
 if __name__ == '__main__':
     main()
 

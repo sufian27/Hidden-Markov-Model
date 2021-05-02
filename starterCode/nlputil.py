@@ -71,8 +71,9 @@ def build_test_samples(paths, num_samples, vocab):
         l = os.listdir(path)
         for i in range(0, num_samples):
             with open(os.path.join(path, l[i]), encoding='utf-8') as fh:
-                sample = fh.read()
-                samples.append(convert_words_to_ints(sample, vocab))
+                sample = convert_words_to_ints(fh.read(), vocab)
+                sample = [i for i in sample if i != -1]  # Remove all UNK
+                samples.append(sample)
     return samples
 
 # Same as above, but for character models.
@@ -108,6 +109,15 @@ def convert_words_to_ints(sample, vocab):
     answer = np.zeros(len(sequence), dtype=np.int64)
     for n, token in enumerate(sequence):
         answer[n] = vocab.get(token, -1)
+    return answer
+
+
+def convert_test_seq_into_ints(sample, vocab):
+    sequence = sample.split()
+    answer = []
+    for token in sequence:
+        if vocab.get(token, -1) is not None:
+            answer.append(vocab.get(token, -1))
     return answer
 
 # Same as above, but for characters.
@@ -160,6 +170,42 @@ def load_and_convert_data_chars_to_onehot(paths, vocab):
         for filename in os.listdir(path):
             with open(os.path.join(path, filename), encoding='utf-8') as fh:
                 data.append(convert_chars_to_onehot(fh.read(), vocab))
+    return data
+
+
+def load_and_convert_data_words_to_ints(paths, vocab, sample_size):
+    data = []
+    count = 0
+    for path in paths:
+        for filename in os.listdir(path):
+            with open(os.path.join(path, filename), encoding='utf-8') as fh:
+                sample = convert_words_to_ints(fh.read(), vocab)
+                if len(sample) > 0 and len(sample) < 100:
+                    data.append(sample)
+                    count += 1
+            if count >= sample_size/2:
+                break
+        if count >= sample_size/2:
+            break
+    print("finished")
+    return data
+
+
+def load_and_convert_test_data_to_ints(paths, vocab, sample_size):
+    data = []
+    count = 0
+    for path in paths:
+        for filename in os.listdir(path):
+            with open(os.path.join(path, filename), encoding='utf-8') as fh:
+                sample = convert_test_seq_into_ints(fh.read(), vocab)
+                if len(sample) > 0 and len(sample) < 100:
+                    data.append(sample)
+                    count += 1
+            if count >= sample_size/2:
+                break
+        if count >= sample_size/2:
+            break
+    print("finished")
     return data
 
 
