@@ -401,12 +401,6 @@ class HMM:
     def complete_sequence(self, sample, steps):
         pass
 
-    def translate_int_to_words(self, sample, int_to_word_map):
-        answer = []
-        for i in range(0, len(sample)):
-            answer.append(int_to_word_map.get(sample[i]))
-        return answer
-
     def train(self, iterations, sample_size, dataset):
         loglikes = np.zeros((iterations,))
         epsilon = 0.00001
@@ -434,6 +428,21 @@ class HMM:
                     range(1, i+1), loglikes[0:i], 'Iteration', 'Log Likelihood')
         print("Log Likelihoods:", loglikes)
 
+    def test(self, test_data, int_to_word_map):
+        correct = 0
+        incorrect = 0
+        for sample in test_data:
+            predicted = self.predict_with_viterbi(sample[:len(sample)-5], 5)
+            # translated = translate_int_to_words(predicted, int_to_word_map)
+            print(translate_int_to_words(predicted[-5:], int_to_word_map))
+            for i in range(1, 6):
+                if sample[len(sample)-i] == predicted[len(sample)-i]:
+                    correct += 1
+                else:
+                    incorrect += 1
+
+        return correct/(correct+incorrect)
+
     def get_figure(self, xvalues, yvalues, xaxisname, yaxisname):
         fig = plt.figure()
         plt.plot(xvalues, yvalues)
@@ -445,6 +454,10 @@ class HMM:
         with open(filename, 'wb') as fh:
             pickle.dump(self, fh)
 
+    def load(filename):
+        with open(filename, 'rb') as fh:
+            return pickle.load(fh)
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -453,6 +466,8 @@ def main():
                         help='Path to the training data directory.')
     parser.add_argument('--dev_path', default=None,
                         help='Path to the development data directory.')
+    parser.add_argument('--model_path', default=None,
+                        help='Path to model directory')
     parser.add_argument('--max_iters', type=int, default=20,
                         help='The maximum number of EM iterations (default 30)')
     parser.add_argument('--hidden_states', type=int, default=10,
@@ -480,12 +495,15 @@ def main():
     #     output loglikelihood on train and test after each iteration
     #     if it converges early, stop the loop and print a message
 
+    postrain = os.path.join(args.train_path, 'pos')
+    negtrain = os.path.join(args.train_path, 'neg')
+    # Combine into list
+    train_paths = [postrain, negtrain]
+    word_vocab, int_to_word_map = build_vocab_words(
+        train_paths, args.sample_size)
+
     if args.train == 1:
         # Paths for positive and negative training data
-        postrain = os.path.join(args.train_path, 'pos')
-        negtrain = os.path.join(args.train_path, 'neg')
-        # Combine into list
-        train_paths = [postrain, negtrain]
 
         # Create vocab and get its size. word_vocab is a dictionary from words to integers. Ex: 'painful':2070
         # word_vocab, int_to_word_map = build_vocab_words(
@@ -517,29 +535,31 @@ def main():
         # print(model.translate_int_to_words(prediction_with_v, int_to_word_map))
         #model.predict_with_viterbi(sample, 5)
         model.save(os.path.join("../modelFile/", "model"))
-
     else:
         # Paths for positive and negative training data
         postest = os.path.join(args.dev_path, 'pos')
         negtest = os.path.join(args.dev_path, 'neg')
+        test_paths = [postest, negtest]
 
-        posfiles = os.listdir(postest)
-        negfiles = os.listdir(negtest)
+        # Sort list of models
+        model_list = os.listdir(args.model_path)
+        model_list.remove("model")
+        model_list.sort(key=lambda x: int(x[5:]))
+        model_list.append("model")  # "model" is the final model created
 
-        possampleloc = posfiles[random.randint(0, len(posfiles))]
-        negsampleloc = negfiles[random.randint(0, len(negfiles))]
+        test_accuracies = [None] * len(model_list)
+        for i in range(0, len(model_list)):
+            # Just testing on final model initially --> will actually be = model_list[i]
+            filename = model_list[i]
+            print(filename)
+            model = HMM.load(os.path.join(args.model_path, filename))
+            test_data = build_test_samples(train_paths, 25, word_vocab)
+            test_accuracies[i] = model.test(test_data, int_to_word_map)
+            print("Tested: {}".format(i))
+        print(test_accuracies)
 
-        postokenized_seq = 0
-        negtokenized_seq = 0
 
-        with open(os.path.join(postest, possampleloc), encoding='utf-8') as fh:
-            sequence = fh.read()
-            postokenized_seq = sequence.split()
-
-        with open(os.path.join(negtest, negsampleloc), encoding='utf-8') as fh:
-            sequence = fh.read()
-            negtokenized_seq = sequence.split()
-
+        #prediction_with_v = model.predict_with_viterbi(dataset[2][0:len(dataset[2])-8], 5)
         #prediction_with_v = model.predict_with_viterbi(dataset[2][0:len(dataset[2])-8], 5)
 if __name__ == '__main__':
     main()
