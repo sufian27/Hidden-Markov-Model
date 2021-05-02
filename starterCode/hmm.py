@@ -91,7 +91,7 @@ class HMM:
         pred = 0
         pred_prob = 0
         for i in range(1, vocab_size+1):
-            prob = self.loglikelihood_helper(sample.append(i))
+            prob = self.loglikelihood_helper(np.append(sample, i))
             if prob > pred_prob:
                 pred_prob = prob
                 pred = i
@@ -402,9 +402,9 @@ class HMM:
         pass
 
     def translate_int_to_words(self, sample, int_to_word_map):
-        answer = []
+        answer = ''
         for i in range(0, len(sample)):
-            answer.append(int_to_word_map.get(sample[i]))
+            answer += int_to_word_map.get(sample[i])+' '
         return answer
 
     def train(self, iterations, sample_size, dataset):
@@ -462,11 +462,11 @@ def main():
     # Create vocab and get its size. word_vocab is a dictionary from words to integers. Ex: 'painful':2070
     # word_vocab, int_to_word_map = build_vocab_words(
     #     train_paths, args.sample_size)
-    word_vocab = build_vocab_chars(
-        train_paths)
+    word_vocab, int_to_word_map = build_vocab_words(
+        train_paths, args.sample_size)
     vocab_size = len(word_vocab)
-    dataset_complete = load_and_convert_data_chars_to_ints(
-        train_paths, word_vocab)
+    dataset_complete = load_and_convert_data_words_to_ints(
+        train_paths, word_vocab, args.sample_size)
     dataset = dataset_complete
     # dataset = np.random.choice(dataset_complete, size=args.sample_size)
     # dataset = dataset_complete
@@ -478,12 +478,19 @@ def main():
     # sample_with_predictions_added, int_to_word_map))
     # loglikelihood = model.loglikelihood(dataset)
     # print(loglikelihood)
+
     model.train(args.max_iters, len(dataset), dataset)
+
     # loglikelihood = model.loglikelihood(dataset)
     # print(loglikelihood)
     # print(int_to_word_map.get(0))
     # give it sample and a number. It will return a new sample with predicted words appended to the end.
-    model.predict_with_viterbo(sample, 5)
+    # prediction_simple = model.predict(
+    #     dataset[2][1:len(dataset)-5], vocab_size, 5)
+    # print(model.translate_int_to_words(prediction_simple, int_to_word_map))
+    prediction_with_v = model.predict_with_viterbi(
+        dataset[2][0:len(dataset[2])-8], 5)
+    print(model.translate_int_to_words(prediction_with_v, int_to_word_map))
 
 
 if __name__ == '__main__':
