@@ -412,6 +412,7 @@ class HMM:
 
     def train(self, iterations, sample_size, dataset):
         loglikes = np.zeros((iterations,))
+        epsilon = 0.00001
         for i in range(0, iterations):
             print("Started ", i+1, " out of ", iterations, " iterations")
             self.em_step(sample_size, dataset)
@@ -420,7 +421,14 @@ class HMM:
             for x in dataset:
                 for string in x:
                     sample.append(string)
-            loglikes[i] = self.loglikelihood_helper(sample)/len(dataset)
+            loglike = self.loglikelihood_helper(sample)/len(dataset)
+            if i > 1:
+                if loglike - loglikes[i-1] < epsilon:
+                    break
+            loglikes[i] = loglike
+            if i % 5 == 0:
+                self.save("modelFile")
+                self.get_figure(range(1, i+1), loglikes[0:i], 'Iteration', 'Log Likelihood')
         print("Log Likelihoods:", loglikes)
         self.get_figure(range(len(loglikes)), loglikes, 'Iteration', 'Log Likelihood')
 
@@ -432,9 +440,8 @@ class HMM:
         plt.savefig('Plot')
         
     def save(self,filename):
-            with open(filename, 'wb') as fh:
-                pickle.dump(self, fh)
-
+        with open(filename, 'wb') as fh:
+            pickle.dump(self, fh)
 
 
 def main():
@@ -444,11 +451,11 @@ def main():
                         help='Path to the training data directory.')
     parser.add_argument('--dev_path', default=None,
                         help='Path to the development data directory.')
-    parser.add_argument('--max_iters', type=int, default=5,
+    parser.add_argument('--max_iters', type=int, default=20,
                         help='The maximum number of EM iterations (default 30)')
     parser.add_argument('--hidden_states', type=int, default=5,
                         help='The number of hidden states to use. (default 10)')
-    parser.add_argument('--sample_size', type=int, default=100,
+    parser.add_argument('--sample_size', type=int, default=2,
                         help='The max number of samples. (default 100)')
     args = parser.parse_args()
 
@@ -478,11 +485,11 @@ def main():
     # Create vocab and get its size. word_vocab is a dictionary from words to integers. Ex: 'painful':2070
     # word_vocab, int_to_word_map = build_vocab_words(
     #     train_paths, args.sample_size)
-    word_vocab = build_vocab_chars(
-        train_paths)
+    word_vocab, int_to_word_map = build_vocab_words(
+        train_paths, args.sample_size)
     vocab_size = len(word_vocab)
-    dataset_complete = load_and_convert_data_chars_to_ints(
-        train_paths, word_vocab)
+    dataset_complete = load_and_convert_data_words_to_ints(
+        train_paths, word_vocab, args.sample_size)
     dataset = dataset_complete
     # dataset = np.random.choice(dataset_complete, size=args.sample_size)
     # dataset = dataset_complete
@@ -499,8 +506,7 @@ def main():
     # print(loglikelihood)
     # print(int_to_word_map.get(0))
     # give it sample and a number. It will return a new sample with predicted words appended to the end.
-    model.predict_with_viterbo(sample, 5)
-    
+    # model.predict_with_viterbi(sample, 5)
     model.save('modelFile')
 
 
