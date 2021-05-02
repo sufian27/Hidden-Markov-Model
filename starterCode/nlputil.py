@@ -43,7 +43,7 @@ def build_vocab_words(paths, sample_size):
             with open(os.path.join(path, filename), encoding='utf-8') as fh:
                 sequence = fh.read()
                 tokenized_seq = sequence.split()
-                if len(tokenized_seq) < 250 and len(tokenized_seq) > 0:
+                if len(tokenized_seq) < 100 and len(tokenized_seq) > 0:
                     for token in tokenized_seq:
                         if token not in vocab:
                             vocab[token] = nextValue
@@ -143,7 +143,7 @@ def load_and_convert_data_words_to_ints(paths, vocab, sample_size):
         for filename in os.listdir(path):
             with open(os.path.join(path, filename), encoding='utf-8') as fh:
                 sample = convert_words_to_ints(fh.read(), vocab)
-                if len(sample) > 0 and len(sample) < 250:
+                if len(sample) > 0 and len(sample) < 100:
                     data.append(sample)
                     count += 1
             if count >= sample_size/2:
