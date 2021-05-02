@@ -40,8 +40,8 @@ class HMM:
         # pi is vector of size K, also initialized between 0 and 1
         self.pi = self.normalize_row(np.random.rand(self.num_states))
         # TEMPORARY: Intializing emissions to uniform distribution
-        self.emissions = self.normalize(np.random.uniform(
-            size=(self.num_states, self.vocab_size)))
+        self.emissions = self.normalize(
+            np.random.rand(self.num_states, self.vocab_size))
 
     # return the loglikelihood for a complete dataset (train OR test) (list of matrices)
     def loglikelihood(self, dataset):
@@ -211,6 +211,8 @@ class HMM:
             # print("c[t] after", c[t])
             alpha[t] *= c[t]
             # print("alpha["+str(t)+"]",alpha[t])
+        for alph in alpha:
+            print("Alpha rom sum ", np.sum(alph))
         return alpha, c
 
     # given the integer representation of a single sequence
@@ -271,7 +273,7 @@ class HMM:
                 num = 0
                 for t in range(0, len(sample) - 1):
                     num += e[t][i][j]
-            self.transitions[i][j] = num/den
+                self.transitions[i][j] = num/den
 
     # Tunes emissions
     def tune_emissions(self, sample, y, e):
@@ -279,12 +281,12 @@ class HMM:
             den = 0
             for t in range(0, len(sample)):
                 den += y[t][j]
-            for vk in range(0, self.vocab_size):  # AbdulMoid Change Here.
+            for vk in range(0, self.vocab_size):
                 num = 0.001
                 for t in range(0, len(sample)):
                     if vk == sample[t]:
                         num += y[t][j]
-                self.emissions[j][vk-1] = num/den
+                self.emissions[j][vk] = num/den
 
     def tune_emissions_new(self, sample, y, e):
         pseudocount = 0.01
@@ -293,7 +295,7 @@ class HMM:
             den = 0
             for t in range(0, len(sample)):
                 den += y[t][j]
-            for vk in range(0, self.vocab_size):  # AbdulMoid Change Here.
+            for vk in range(0, self.vocab_size):
                 num = pseudocount
                 for t in range(0, len(sample)):
                     if vk == sample[t]:
@@ -303,8 +305,11 @@ class HMM:
 
     # Uses the e and y matrices from the e_step to tune transition and emission probabilities
     def m_step(self, sample, y, e):
+        for i in range(0, len(self.pi)):
+            self.pi[i] = y[0][i]
+
         self.tune_transitions_new(sample, y, e)
-        self.tune_emissions(sample, y, e)
+        self.tune_emissions_new(sample, y, e)
 
     # apply a single step of the em algorithm to the model on all the training data,
     # which is most likely a python list of numpy matrices (one per sample).
@@ -314,7 +319,8 @@ class HMM:
         print("Before EM")
         print(self.transitions)
         print(self.emissions)
-
+        for emission in self.emissions:
+            print("Sum of row in emissions", np.sum(emission))
         for i in range(0, sample_size):
             rnd = random.randint(0, len(dataset)-1)  # Pick a random sample
             sample = dataset[rnd]
