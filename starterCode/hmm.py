@@ -434,7 +434,7 @@ class HMM:
         for sample in test_data:
             predicted = self.predict_with_viterbi(sample[:len(sample)-5], 5)
             # translated = translate_int_to_words(predicted, int_to_word_map)
-            print(translate_int_to_words(predicted[-5:], int_to_word_map))
+            # print(translate_int_to_words(predicted[-5:], int_to_word_map))
             for i in range(1, 6):
                 if sample[len(sample)-i] == predicted[len(sample)-i]:
                     correct += 1
@@ -548,15 +548,21 @@ def main():
         model_list.append("model")  # "model" is the final model created
 
         test_accuracies = [None] * len(model_list)
+        test_likes = [None] * len(model_list)
         for i in range(0, len(model_list)):
             # Just testing on final model initially --> will actually be = model_list[i]
             filename = model_list[i]
-            print(filename)
             model = HMM.load(os.path.join(args.model_path, filename))
-            test_data = build_test_samples(train_paths, 25, word_vocab)
+            test_data = build_test_samples(train_paths, 50, word_vocab)
             test_accuracies[i] = model.test(test_data, int_to_word_map)
+            # Flatten data
+            # flatten_data = [j for sub in test_data for j in sub]
+            # flatten_data = [i for i in flatten_data if i != -1]  # Removed UNK
+            # test_likes[i] = model.loglikelihood_helper(
+            #     flatten_data)/len(test_data)
             print("Tested: {}".format(i))
-        print(test_accuracies)
+
+        print(test_likes)
 
 
         #prediction_with_v = model.predict_with_viterbi(dataset[2][0:len(dataset[2])-8], 5)
