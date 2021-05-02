@@ -243,7 +243,7 @@ class HMM:
                 y[t][j] = 0
                 for i in range(0, self.num_states):
                     e[t][j][i] = (alpha[t][j] * self.transitions[j]
-                                  [i] * self.emissions[i][t+1] * beta[t+1][i])
+                                  [i] * self.emissions[i][sample[t+1]] * beta[t+1][i])
                     y[t][j] += e[t][j][i]
 
         for i in range(0, self.num_states):
@@ -286,6 +286,21 @@ class HMM:
                         num += y[t][j]
                 self.emissions[j][vk-1] = num/den
 
+    def tune_emissions_new(self, sample, y, e):
+        pseudocount = 0.01
+        dist_inertia = 0.25
+        for j in range(0, self.num_states):
+            den = 0
+            for t in range(0, len(sample)):
+                den += y[t][j]
+            for vk in range(0, self.vocab_size):  # AbdulMoid Change Here.
+                num = pseudocount
+                for t in range(0, len(sample)):
+                    if vk == sample[t]:
+                        num += y[t][j]
+                self.emissions[j][vk] = num/den * \
+                    (1 - dist_inertia) + self.emissions[j][vk] * dist_inertia
+
     # Uses the e and y matrices from the e_step to tune transition and emission probabilities
     def m_step(self, sample, y, e):
         self.tune_transitions_new(sample, y, e)
@@ -296,9 +311,9 @@ class HMM:
     # Note: you may find it helpful to write helper methods for the e-step and m-step,
     def em_step(self, sample_size, dataset):
         # Takes out a sample from the dataset and does e_step and m_step
-        # print("Before EM")
-        # print(self.transitions)
-        # print(self.emissions)
+        print("Before EM")
+        print(self.transitions)
+        print(self.emissions)
 
         for i in range(0, sample_size):
             rnd = random.randint(0, len(dataset)-1)  # Pick a random sample
@@ -307,12 +322,12 @@ class HMM:
             self.m_step(sample, y, e)
             print("Completed ", i, " out of ", len(
                 dataset), " samples in this iteration")
-            print("Transitions", self.transitions)
-            print("Emissions", self.emissions)
+            # print("Transitions", self.transitions)
+            # print("Emissions", self.emissions)
 
-        # print("After EM")
-        # print(self.transitions)
-        # print(self.emissions)
+        print("After EM")
+        print(self.transitions)
+        print(self.emissions)
 
     # Return a "completed" sample by additing additional steps based on model probability.
     def complete_sequence(self, sample, steps):
@@ -326,8 +341,10 @@ class HMM:
 
     def train(self, iterations, sample_size, dataset):
         for i in range(0, iterations):
+            print(">>>>>>>>>>>>>>>>>Start ", i, "th iteration.")
             self.em_step(sample_size, dataset)
-        print("Log Likelihood:", self.loglikelihood(dataset))
+            print("Log Likelihood:", self.loglikelihood(dataset))
+            print(">>>>>>>>>>>>>>>>>End ", i, "th iteration.")
 
 
 def main():
