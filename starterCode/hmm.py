@@ -356,17 +356,13 @@ class HMM:
     # apply a single step of the em algorithm to the model on all the training data,
     # which is most likely a python list of numpy matrices (one per sample).
     # Note: you may find it helpful to write helper methods for the e-step and m-step,
-    def em_step(self, sample_size, dataset):
+    def em_step(self, sample):
         # Takes out a sample from the dataset and does e_step and m_step
         # print("Before EM. Below are transitions followed by emissions")
         # print(self.transitions)
         # # print(self.emissions)
         # for transition in self.emissions:
         #     print("Sum of row in emissions", np.sum(transition))
-        sample = []
-        for x in dataset:
-            for string in x:
-                sample.append(string)
         # mean_loglikelihood = 0.0
         # for i in range(0, sample_size):
         #     # rnd = random.randint(0, len(dataset)-1)  # Pick a random sample
@@ -413,21 +409,22 @@ class HMM:
     def train(self, iterations, sample_size, dataset):
         loglikes = np.zeros((iterations,))
         epsilon = 0.00001
+        sample = []
+        for x in dataset:
+            for string in x:
+                sample.append(string)
         for i in range(0, iterations):
             print("Started ", i+1, " out of ", iterations, " iterations")
-            self.em_step(sample_size, dataset)
+            self.em_step(sample)
             print("Completed ", i+1, " out of ", iterations, " iterations")
-            sample = []
-            for x in dataset:
-                for string in x:
-                    sample.append(string)
             loglike = self.loglikelihood_helper(sample)/len(dataset)
             if i > 1:
                 if loglike - loglikes[i-1] < epsilon:
                     break
             loglikes[i] = loglike
             if i % 5 == 0:
-                self.save("../modelFile/model" + str(i/5))
+                self.save(os.path.join(
+                    "../modelFile/", "model" + str(int(i/5))))
                 self.get_figure(
                     range(1, i+1), loglikes[0:i], 'Iteration', 'Log Likelihood')
         print("Log Likelihoods:", loglikes)
@@ -509,7 +506,7 @@ def main():
     # print(int_to_word_map.get(0))
     # give it sample and a number. It will return a new sample with predicted words appended to the end.
     # model.predict_with_viterbi(sample, 5)
-    model.save('../modelFile/model')
+    model.save(os.path.join("../modelFile/", "model"))
 
 
 if __name__ == '__main__':
