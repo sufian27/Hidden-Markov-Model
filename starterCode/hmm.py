@@ -506,8 +506,14 @@ def main():
     # print(int_to_word_map.get(0))
     # give it sample and a number. It will return a new sample with predicted words appended to the end.
     # model.predict_with_viterbi(sample, 5)
+    # prediction_with_v = model.predict_with_viterbi(
+        # dataset[2][0:len(dataset[2])-8], 5)
+    # print(model.translate_int_to_words(prediction_with_v, int_to_word_map))
+    model.predict_with_viterbo(sample, 5)
     model.save(os.path.join("../modelFile/", "model"))
 
 
 if __name__ == '__main__':
     main()
+
+#CMD arg: python hmm.py --train_path ../../imdbFor246/train --hidden_states 5 --sample_size 6 --max_iters
