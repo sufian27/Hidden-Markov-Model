@@ -525,16 +525,24 @@ def main():
         possampleloc =  posfiles[random.randint(0,len(posfiles))]
         negsampleloc =  negfiles[random.randint(0,len(negfiles))]
         
+        
+        #Tokenized sequence
         postokenized_seq = 0
         negtokenized_seq = 0
         
+        #String
+        possequence = 0
+        negsequence = 0
+        
         with open(os.path.join(postest, possampleloc), encoding='utf-8') as fh:
-            sequence = fh.read()
-            postokenized_seq = sequence.split()
+            possequence = fh.read()
+            print(possequence)
+            postokenized_seq = possequence.split()
+            print(postokenized_seq)
             
         with open(os.path.join(negtest, negsampleloc), encoding='utf-8') as fh:
-            sequence = fh.read()
-            negtokenized_seq = sequence.split()
+            negsequence = fh.read()
+            negtokenized_seq = negsequence.split()
             
         
         
