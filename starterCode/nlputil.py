@@ -110,9 +110,15 @@ def convert_words_to_ints(sample, vocab):
         answer[n] = vocab.get(token, -1)
     return answer
 
+def convert_test_seq_into_ints(sample, vocab):
+    sequence = sample.split()
+    answer = []
+    for token in sequence:
+        if vocab.get(token, -1) is not None:
+            answer.append(vocab.get(token, -1))
+    return answer
+
 # Same as above, but for characters.
-
-
 def convert_chars_to_ints(sample, vocab):
     answer = np.zeros(len(sample), dtype=np.uint)
     for n, token in enumerate(sample):
@@ -162,6 +168,40 @@ def load_and_convert_data_chars_to_onehot(paths, vocab):
                 data.append(convert_chars_to_onehot(fh.read(), vocab))
     return data
 
+
+def load_and_convert_data_words_to_ints(paths, vocab, sample_size):
+    data = []
+    count = 0
+    for path in paths:
+        for filename in os.listdir(path):
+            with open(os.path.join(path, filename), encoding='utf-8') as fh:
+                sample = convert_words_to_ints(fh.read(), vocab)
+                if len(sample) > 0 and len(sample) < 100:
+                    data.append(sample)
+                    count += 1
+            if count >= sample_size/2:
+                break
+        if count >= sample_size/2:
+            break
+    print("finished")
+    return data
+
+def load_and_convert_test_data_to_ints(paths, vocab, sample_size):
+    data = []
+    count = 0
+    for path in paths:
+        for filename in os.listdir(path):
+            with open(os.path.join(path, filename), encoding='utf-8') as fh:
+                sample = convert_test_seq_into_ints(fh.read(), vocab)
+                if len(sample) > 0 and len(sample) < 100:
+                    data.append(sample)
+                    count += 1
+            if count >= sample_size/2:
+                break
+        if count >= sample_size/2:
+            break
+    print("finished")
+    return data
 
 def load_and_convert_data_words_to_ints(paths, vocab, sample_size):
     data = []

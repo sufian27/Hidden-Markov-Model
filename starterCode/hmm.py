@@ -497,10 +497,16 @@ def main():
 
     postrain = os.path.join(args.train_path, 'pos')
     negtrain = os.path.join(args.train_path, 'neg')
+    postest = os.path.join(args.test_path, 'pos')
+    negtest = os.path.join(args.test_path, 'neg')
     # Combine into list
     train_paths = [postrain, negtrain]
+    test_paths = [postest, negtest]
+
     word_vocab, int_to_word_map = build_vocab_words(
         train_paths, args.sample_size)
+
+    vocab_size = len(word_vocab)
 
     if args.train == 1:
         # Paths for positive and negative training data
@@ -508,9 +514,6 @@ def main():
         # Create vocab and get its size. word_vocab is a dictionary from words to integers. Ex: 'painful':2070
         # word_vocab, int_to_word_map = build_vocab_words(
         #     train_paths, args.sample_size)
-        word_vocab, int_to_word_map = build_vocab_words(
-            train_paths, args.sample_size)
-        vocab_size = len(word_vocab)
         dataset_complete = load_and_convert_data_words_to_ints(
             train_paths, word_vocab, args.sample_size)
         dataset = dataset_complete
@@ -553,8 +556,9 @@ def main():
             filename = model_list[i]
             print(filename)
             model = HMM.load(os.path.join(args.model_path, filename))
-            test_data = build_test_samples(train_paths, 25, word_vocab)
-            test_accuracies[i] = model.test(test_data, int_to_word_map)
+            dataset = load_and_convert_test_data_to_ints(
+                test_paths, word_vocab, args.sample_size)
+            test_accuracies[i] = model.test(dataset, int_to_word_map)
             print("Tested: {}".format(i))
         print(test_accuracies)
 
