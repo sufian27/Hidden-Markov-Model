@@ -482,6 +482,8 @@ def main():
     # loglikelihood = model.loglikelihood(dataset)
     # print(loglikelihood)
     # print(int_to_word_map.get(0))
+    # give it sample and a number. It will return a new sample with predicted words appended to the end.
+    model.predict_with_viterbo(sample, 5)
 
 
 if __name__ == '__main__':
