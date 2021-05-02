@@ -203,9 +203,6 @@ class HMM:
             for j in range(0, self.num_states):
                 for i in range(0, self.num_states):
                     # print(t, j, sample[t])
-                    alpha[t][j]=alpha[t][j]*self.emissions[j][sample[t]] + np.longdouble(alpha[t-1][i] *
-                                                 self.transitions[i][j] * self.emissions[j][sample[t]])
-
                     alpha[t][j] += np.longdouble(alpha[t-1][i] *
                                     self.transitions[i][j] * self.emissions[j][sample[t]])
                 # print("c[t]", c[t], "alpha[t][j]", alpha[t][j])
