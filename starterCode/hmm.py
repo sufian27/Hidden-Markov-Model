@@ -202,6 +202,7 @@ class HMM:
         for t in range(1, len(sample)):
             for j in range(0, self.num_states):
                 for i in range(0, self.num_states):
+                    # print(t, j, sample[t])
                     alpha[t][j] += np.longdouble(alpha[t-1][i] *
                                                  self.transitions[i][j] * self.emissions[j][sample[t]])
                 # print("c[t]", c[t], "alpha[t][j]", alpha[t][j])
@@ -211,8 +212,7 @@ class HMM:
             # print("c[t] after", c[t])
             alpha[t] *= c[t]
             # print("alpha["+str(t)+"]",alpha[t])
-        for alph in alpha:
-            print("Alpha rom sum ", np.sum(alph))
+
         return alpha, c
 
     # given the integer representation of a single sequence
@@ -221,6 +221,7 @@ class HMM:
         beta = np.zeros((len(sample), self.num_states))
         # initialization
         beta[len(sample)-1] = c[len(sample)-1]
+
         # recursion
         for t in range(1, len(sample)):
             for i in range(0, self.num_states):
@@ -229,6 +230,8 @@ class HMM:
                                                               self.emissions[j][sample[len(sample)-t]] * beta[len(sample)-t][j])
             beta[len(sample)-1-t] *= c[len(sample)-1-t]
             # print("beta["+str(len(sample)-1-t)+"]", beta[len(sample)-1-t])
+        # for alph in beta:
+            # print("Beta rom sum ", np.sum(alph))
         return beta
 
     # Uses alpha and beta values to calculate
@@ -244,12 +247,14 @@ class HMM:
             for j in range(0, self.num_states):
                 y[t][j] = 0
                 for i in range(0, self.num_states):
+                    #print(len(sample)-1, t, j, i)
                     e[t][j][i] = (alpha[t][j] * self.transitions[j]
                                   [i] * self.emissions[i][sample[t+1]] * beta[t+1][i])
                     y[t][j] += e[t][j][i]
 
         for i in range(0, self.num_states):
             y[len(sample)-1][i] = alpha[len(sample)-1][i]
+
         return y, e
 
     # Tunes transitions
@@ -311,6 +316,17 @@ class HMM:
         self.tune_transitions_new(sample, y, e)
         self.tune_emissions_new(sample, y, e)
 
+    def compare_theta(self, prev, after):
+        pos_count = 0
+        neg_count = 0
+        for i in range(0, len(prev)):
+            for j in range(0, len(prev[i])):
+                if after[i][j] - prev[i][j] > 0:
+                    pos_count += 1
+                else:
+                    neg_count += 1
+        return pos_count, neg_count
+
     # apply a single step of the em algorithm to the model on all the training data,
     # which is most likely a python list of numpy matrices (one per sample).
     # Note: you may find it helpful to write helper methods for the e-step and m-step,
@@ -324,16 +340,27 @@ class HMM:
         for i in range(0, sample_size):
             rnd = random.randint(0, len(dataset)-1)  # Pick a random sample
             sample = dataset[rnd]
+            transitions = self.transitions
+            emissions = self.emissions
             y, e = self.e_step(sample)
             self.m_step(sample, y, e)
-            print("Completed ", i, " out of ", len(
-                dataset), " samples in this iteration")
+            print("Completed ", i+1, " out of ",
+                  sample_size, " samples in this iteration")
             # print("Transitions", self.transitions)
             # print("Emissions", self.emissions)
+            pos_count, neg_count = self.compare_theta(
+                transitions, self.transitions)
+            print("Transitions changes: increase",
+                  pos_count, "decrease", neg_count)
+            pos_count, neg_count = self.compare_theta(
+                emissions, self.emissions)
+            print("Emissions changes: increase",
+                  pos_count, "decrease", neg_count)
+            print("Log Likelihood:", self.loglikelihood(dataset))
 
-        print("After EM")
-        print(self.transitions)
-        print(self.emissions)
+        # print("After EM")
+        # print(self.transitions)
+        # print(self.emissions)
 
     # Return a "completed" sample by additing additional steps based on model probability.
     def complete_sequence(self, sample, steps):
@@ -347,10 +374,10 @@ class HMM:
 
     def train(self, iterations, sample_size, dataset):
         for i in range(0, iterations):
-            print(">>>>>>>>>>>>>>>>>Start ", i, "th iteration.")
+            print("Started ", i+1, " out of ", iterations, " iterations")
             self.em_step(sample_size, dataset)
+            print("Completed ", i+1, " out of ", iterations, " iterations")
             print("Log Likelihood:", self.loglikelihood(dataset))
-            print(">>>>>>>>>>>>>>>>>End ", i, "th iteration.")
 
 
 def main():
@@ -360,9 +387,9 @@ def main():
                         help='Path to the training data directory.')
     parser.add_argument('--dev_path', default=None,
                         help='Path to the development data directory.')
-    parser.add_argument('--max_iters', type=int, default=30,
+    parser.add_argument('--max_iters', type=int, default=5,
                         help='The maximum number of EM iterations (default 30)')
-    parser.add_argument('--hidden_states', type=int, default=10,
+    parser.add_argument('--hidden_states', type=int, default=5,
                         help='The number of hidden states to use. (default 10)')
     parser.add_argument('--sample_size', type=int, default=100,
                         help='The max number of samples. (default 100)')
@@ -392,10 +419,11 @@ def main():
     train_paths = [postrain, negtrain]
 
     # Create vocab and get its size. word_vocab is a dictionary from words to integers. Ex: 'painful':2070
-    word_vocab, int_to_word_map = build_vocab_words(train_paths)
+    word_vocab, int_to_word_map = build_vocab_words(
+        train_paths, args.sample_size)
     vocab_size = len(word_vocab)
     dataset_complete = load_and_convert_data_words_to_ints(
-        train_paths, word_vocab)
+        train_paths, word_vocab, args.sample_size)
     dataset = dataset_complete
     # dataset = np.random.choice(dataset_complete, size=args.sample_size)
     # dataset = dataset_complete
@@ -407,7 +435,7 @@ def main():
     # sample_with_predictions_added, int_to_word_map))
     # loglikelihood = model.loglikelihood(dataset)
     # print(loglikelihood)
-    model.train(args.max_iters, args.sample_size, dataset)
+    model.train(args.max_iters, len(dataset), dataset)
     # loglikelihood = model.loglikelihood(dataset)
     # print(loglikelihood)
     # print(int_to_word_map.get(0))
