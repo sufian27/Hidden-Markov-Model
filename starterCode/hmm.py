@@ -94,7 +94,7 @@ class HMM:
         pred = 0
         pred_prob = 0
         for i in range(1, vocab_size+1):
-            prob = self.loglikelihood_helper(sample.append(i))
+            prob = self.loglikelihood_helper(np.append(sample, i))
             if prob > pred_prob:
                 pred_prob = prob
                 pred = i
@@ -356,13 +356,17 @@ class HMM:
     # apply a single step of the em algorithm to the model on all the training data,
     # which is most likely a python list of numpy matrices (one per sample).
     # Note: you may find it helpful to write helper methods for the e-step and m-step,
-    def em_step(self, sample):
+    def em_step(self, sample_size, dataset):
         # Takes out a sample from the dataset and does e_step and m_step
         # print("Before EM. Below are transitions followed by emissions")
         # print(self.transitions)
         # # print(self.emissions)
         # for transition in self.emissions:
         #     print("Sum of row in emissions", np.sum(transition))
+        sample = []
+        for x in dataset:
+            for string in x:
+                sample.append(string)
         # mean_loglikelihood = 0.0
         # for i in range(0, sample_size):
         #     # rnd = random.randint(0, len(dataset)-1)  # Pick a random sample
@@ -401,32 +405,22 @@ class HMM:
         pass
 
     def translate_int_to_words(self, sample, int_to_word_map):
-        answer = []
+        answer = ''
         for i in range(0, len(sample)):
-            answer.append(int_to_word_map.get(sample[i]))
+            answer += int_to_word_map.get(sample[i])+' '
         return answer
 
     def train(self, iterations, sample_size, dataset):
         loglikes = np.zeros((iterations,))
-        epsilon = 0.00001
-        sample = []
-        for x in dataset:
-            for string in x:
-                sample.append(string)
         for i in range(0, iterations):
             print("Started ", i+1, " out of ", iterations, " iterations")
-            self.em_step(sample)
+            self.em_step(sample_size, dataset)
             print("Completed ", i+1, " out of ", iterations, " iterations")
-            loglike = self.loglikelihood_helper(sample)/len(dataset)
-            if i > 1:
-                if loglike - loglikes[i-1] < epsilon:
-                    break
-            loglikes[i] = loglike
-            if i % 5 == 0:
-                self.save(os.path.join(
-                    "../modelFile/", "model" + str(int(i/5))))
-                self.get_figure(
-                    range(1, i+1), loglikes[0:i], 'Iteration', 'Log Likelihood')
+            sample = []
+            for x in dataset:
+                for string in x:
+                    sample.append(string)
+            loglikes[i] = self.loglikelihood_helper(sample)/len(dataset)
         print("Log Likelihoods:", loglikes)
         self.get_figure(range(len(loglikes)), loglikes,
                         'Iteration', 'Log Likelihood')
@@ -450,11 +444,11 @@ def main():
                         help='Path to the training data directory.')
     parser.add_argument('--dev_path', default=None,
                         help='Path to the development data directory.')
-    parser.add_argument('--max_iters', type=int, default=20,
+    parser.add_argument('--max_iters', type=int, default=5,
                         help='The maximum number of EM iterations (default 30)')
-    parser.add_argument('--hidden_states', type=int, default=10,
+    parser.add_argument('--hidden_states', type=int, default=5,
                         help='The number of hidden states to use. (default 10)')
-    parser.add_argument('--sample_size', type=int, default=10,
+    parser.add_argument('--sample_size', type=int, default=100,
                         help='The max number of samples. (default 100)')
     args = parser.parse_args()
 
@@ -500,20 +494,26 @@ def main():
     # sample_with_predictions_added, int_to_word_map))
     # loglikelihood = model.loglikelihood(dataset)
     # print(loglikelihood)
+
     model.train(args.max_iters, len(dataset), dataset)
+
     # loglikelihood = model.loglikelihood(dataset)
     # print(loglikelihood)
     # print(int_to_word_map.get(0))
     # give it sample and a number. It will return a new sample with predicted words appended to the end.
-    # model.predict_with_viterbi(sample, 5)
-    # prediction_with_v = model.predict_with_viterbi(
-        # dataset[2][0:len(dataset[2])-8], 5)
-    # print(model.translate_int_to_words(prediction_with_v, int_to_word_map))
+    # prediction_simple = model.predict(
+    #     dataset[2][1:len(dataset)-5], vocab_size, 5)
+    # print(model.translate_int_to_words(prediction_simple, int_to_word_map))
+    prediction_with_v = model.predict_with_viterbi(
+        dataset[2][0:len(dataset[2])-8], 5)
+    print(model.translate_int_to_words(prediction_with_v, int_to_word_map))
     model.predict_with_viterbo(sample, 5)
-    model.save(os.path.join("../modelFile/", "model"))
+
+    model.save('modelFile')
 
 
 if __name__ == '__main__':
     main()
 
-#CMD arg: python hmm.py --train_path ../../imdbFor246/train --hidden_states 5 --sample_size 6 --max_iters
+
+# CMD arg: python hmm.py --train_path ../../imdbFor246/train --hidden_states 5 --sample_size 6 --max_iters 7
