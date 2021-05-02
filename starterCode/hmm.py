@@ -479,14 +479,14 @@ def main():
     # 5+. use EM to train the HMM on the training data,
     #     output loglikelihood on train and test after each iteration
     #     if it converges early, stop the loop and print a message
-    
-    if args.train==1:
+
+    if args.train == 1:
         # Paths for positive and negative training data
         postrain = os.path.join(args.train_path, 'pos')
         negtrain = os.path.join(args.train_path, 'neg')
         # Combine into list
         train_paths = [postrain, negtrain]
-    
+
         # Create vocab and get its size. word_vocab is a dictionary from words to integers. Ex: 'painful':2070
         # word_vocab, int_to_word_map = build_vocab_words(
         #     train_paths, args.sample_size)
@@ -498,7 +498,7 @@ def main():
         dataset = dataset_complete
         # dataset = np.random.choice(dataset_complete, size=args.sample_size)
         # dataset = dataset_complete
-    
+
         # Create model
         model = HMM(args.hidden_states, vocab_size)
         # sample_with_predictions_added = model.predict_with_viterbi(dataset[0], 5)
@@ -513,40 +513,35 @@ def main():
         # give it sample and a number. It will return a new sample with predicted words appended to the end.
         # model.predict_with_viterbi(sample, 5)
         # prediction_with_v = model.predict_with_viterbi(
-            # dataset[2][0:len(dataset[2])-8], 5)
+        # dataset[2][0:len(dataset[2])-8], 5)
         # print(model.translate_int_to_words(prediction_with_v, int_to_word_map))
         #model.predict_with_viterbi(sample, 5)
         model.save(os.path.join("../modelFile/", "model"))
-        
+
     else:
         # Paths for positive and negative training data
         postest = os.path.join(args.dev_path, 'pos')
         negtest = os.path.join(args.dev_path, 'neg')
-        
-        posfiles=os.listdir(postest)
-        negfiles=os.listdir(negtest)
-        
-        possampleloc =  posfiles[random.randint(0,len(posfiles))]
-        negsampleloc =  negfiles[random.randint(0,len(negfiles))]
-        
+
+        posfiles = os.listdir(postest)
+        negfiles = os.listdir(negtest)
+
+        possampleloc = posfiles[random.randint(0, len(posfiles))]
+        negsampleloc = negfiles[random.randint(0, len(negfiles))]
+
         postokenized_seq = 0
         negtokenized_seq = 0
-        
+
         with open(os.path.join(postest, possampleloc), encoding='utf-8') as fh:
             sequence = fh.read()
             postokenized_seq = sequence.split()
-            
+
         with open(os.path.join(negtest, negsampleloc), encoding='utf-8') as fh:
             sequence = fh.read()
             negtokenized_seq = sequence.split()
-            
-        
-        
-        
+
         #prediction_with_v = model.predict_with_viterbi(dataset[2][0:len(dataset[2])-8], 5)
-
-
 if __name__ == '__main__':
     main()
 
-#CMD arg: python hmm.py --train_path ../../imdbFor246/train --hidden_states 5 --sample_size 6 --max_iters
+# CMD arg: python hmm.py --train_path ../../imdbFor246/train --hidden_states 5 --sample_size 6 --max_iters
