@@ -7,6 +7,9 @@ import argparse
 import numpy as np
 from nlputil import *   # utility methods for working with text
 import random
+from matplotlib import pyplot as plt
+import pickle
+
 
 # A utility class for bundling together relevant parameters - you may modify if you like.
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -419,6 +422,19 @@ class HMM:
                     sample.append(string)
             loglikes[i] = self.loglikelihood_helper(sample)/len(dataset)
         print("Log Likelihoods:", loglikes)
+        self.get_figure(range(len(loglikes)), loglikes,
+                        'Iteration', 'Log Likelihood')
+
+    def get_figure(self, xvalues, yvalues, xaxisname, yaxisname):
+        fig = plt.figure()
+        plt.plot(xvalues, yvalues)
+        plt.xlabel(xaxisname)
+        plt.ylabel(yaxisname)
+        plt.savefig('Plot')
+
+    def save(self, filename):
+        with open(filename, 'wb') as fh:
+            pickle.dump(self, fh)
 
 
 def main():
@@ -491,6 +507,9 @@ def main():
     prediction_with_v = model.predict_with_viterbi(
         dataset[2][0:len(dataset[2])-8], 5)
     print(model.translate_int_to_words(prediction_with_v, int_to_word_map))
+    model.predict_with_viterbo(sample, 5)
+
+    model.save('modelFile')
 
 
 if __name__ == '__main__':
