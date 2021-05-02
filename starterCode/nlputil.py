@@ -33,10 +33,11 @@ import sys
 # which the paths are presented to the method.  Renaming the files may also change the order.
 #
 # paths -- a list of paths to directories containing data.  paths represented as strings)
-def build_vocab_words(paths):
+def build_vocab_words(paths, sample_size):
     vocab = {}
     int_to_word_map = {}
     nextValue = 0
+    count = 0
     for path in paths:
         for filename in os.listdir(path):
             with open(os.path.join(path, filename), encoding='utf-8') as fh:
@@ -46,6 +47,12 @@ def build_vocab_words(paths):
                         vocab[token] = nextValue
                         int_to_word_map[nextValue] = token
                         nextValue += 1
+            count += 1
+            if count == sample_size:
+                break
+        if count == sample_size:
+            break
+    print("finished")
     return vocab, int_to_word_map
 
 # Same as above, but for character models.
@@ -53,7 +60,7 @@ def build_vocab_words(paths):
 
 def build_vocab_chars(paths):
     vocab = {}
-    nextValue = 1
+    nextValue = 0
     for path in paths:
         for filename in os.listdir(path):
             with open(os.path.join(path, filename), encoding='utf-8') as fh:
@@ -62,6 +69,7 @@ def build_vocab_chars(paths):
                     if character not in vocab:
                         vocab[character] = nextValue
                         nextValue += 1
+    print("finished")
     return vocab
 
 
@@ -128,12 +136,21 @@ def load_and_convert_data_chars_to_onehot(paths, vocab):
     return data
 
 
-def load_and_convert_data_words_to_ints(paths, vocab):
+def load_and_convert_data_words_to_ints(paths, vocab, sample_size):
     data = []
+    count = 0
     for path in paths:
         for filename in os.listdir(path):
             with open(os.path.join(path, filename), encoding='utf-8') as fh:
-                data.append(convert_words_to_ints(fh.read(), vocab))
+                sample = convert_words_to_ints(fh.read(), vocab)
+                if len(sample) > 0:
+                    data.append(sample)
+            count += 1
+            if count == sample_size:
+                break
+        if count == sample_size:
+            break
+    print("finished")
     return data
 
 # Same as above, but uses a character model
