@@ -421,6 +421,9 @@ class HMM:
                 for string in x:
                     sample.append(string)
             loglikes[i] = self.loglikelihood_helper(sample)/len(dataset)
+            if i % 20 == 0:
+                print("Log Likelihoods:", loglikes)
+
         print("Log Likelihoods:", loglikes)
         self.get_figure(range(len(loglikes)), loglikes,
                         'Iteration', 'Log Likelihood')
@@ -507,7 +510,6 @@ def main():
     prediction_with_v = model.predict_with_viterbi(
         dataset[2][0:len(dataset[2])-8], 5)
     print(model.translate_int_to_words(prediction_with_v, int_to_word_map))
-    model.predict_with_viterbo(sample, 5)
 
     model.save('modelFile')
 
