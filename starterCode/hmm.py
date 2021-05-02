@@ -427,7 +427,7 @@ class HMM:
                     break
             loglikes[i] = loglike
             if i % 5 == 0:
-                self.save("modelFile")
+                self.save("../modelFile/model" + str(i/5))
                 self.get_figure(range(1, i+1), loglikes[0:i], 'Iteration', 'Log Likelihood')
         print("Log Likelihoods:", loglikes)
         self.get_figure(range(len(loglikes)), loglikes, 'Iteration', 'Log Likelihood')
@@ -507,7 +507,7 @@ def main():
     # print(int_to_word_map.get(0))
     # give it sample and a number. It will return a new sample with predicted words appended to the end.
     # model.predict_with_viterbi(sample, 5)
-    model.save('modelFile')
+    model.save('../modelFile/model')
 
 
 
