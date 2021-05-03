@@ -29,11 +29,11 @@ import random
 
 
 class HMM:
-    __slots__ = ('pi', 'transitions', 'emissions', 'num_states', 'vocab_size')
+    __slots__ = ('pi', 'transitions', 'emissions', 'num_states', 'vocab_size', 'word_vocab')
 
     # The constructor should initalize all the model parameters.
     # you may want to write a helper method to initialize the emission probabilities.
-    def __init__(self, num_states, vocab_size):
+    def __init__(self, num_states, vocab_size, word_vocab):
         # Num_states is number of hidden states
         self.num_states = num_states
         # Vocab size is the number of unique words
@@ -46,6 +46,8 @@ class HMM:
         # TEMPORARY: Intializing emissions to uniform distribution
         self.emissions = self.normalize(
             np.random.rand(self.num_states, self.vocab_size))
+        # save the word vocab for future testing and predicting
+        self.word_vocab = word_vocab
 
     # return the loglikelihood for a complete dataset (train OR test) (list of matrices)
     def loglikelihood(self, dataset):
@@ -83,23 +85,23 @@ class HMM:
 
     # return a prediction of next n words of a sequence by evaluating likelihoods
     # possible bug: because we are calculating *log* likelihoods we may want to minimize it instead of maximize it
-    def predict(self, sample, vocab_size, num_words_into_future):
-        pred = sample
+    def predict_simple(self, sample, vocab_size, num_words_into_future):
+        pred = np.copy(sample)
         for i in range(num_words_into_future):
             pred_step = self.predict_next_word(pred, vocab_size)
-            pred.append(pred_step)
+            pred = np.append(pred, pred_step)
+            print("simple: {} out of {} words complete".format(i+1, num_words_into_future))
         return pred
 
     # return a prediction of the next word of a sequence
     def predict_next_word(self, sample, vocab_size):
         pred = 0
-        pred_prob = 0
-        for i in range(1, vocab_size+1):
-            prob = self.loglikelihood_helper(sample.append(i))
+        pred_prob = float('-inf')
+        for i in range(0, vocab_size):
+            prob = self.loglikelihood_helper(np.append(sample, i))
             if prob > pred_prob:
                 pred_prob = prob
                 pred = i
-            del sample[-1]
         return pred
 
     # given a sequence of observations (single array of numbers) with blanks at the end (represented by -99),
@@ -124,6 +126,7 @@ class HMM:
                 self.emissions[best_state_to_go_into])
             most_recent_state = best_state_to_go_into
             sample_with_blanks[len(sample)+i] = best_word_to_fill_blank
+            print("viterbi: {} out of {} words complete".format(i+1, num_words_into_future))
         return sample_with_blanks
 
     # given a sequence of observations (single array of numbers), find the most probable path of hidden states it could have followed
@@ -157,6 +160,7 @@ class HMM:
                 if(sample[0] == -99):  # blank then emission israndom b/w 0 and 1
                     v[t][j] = max_v_prev * np.random.rand(1)[0]
                 else:
+                    #print(self.emissions.shape, sample[t])
                     v[t][j] = max_v_prev * self.emissions[j][sample[t]]
 
                 backpointer[t][j] = prev_state_selected
@@ -182,7 +186,6 @@ class HMM:
             path_trace[index] = backpointer[time][path_trace[index+1]]
             time -= 1
             index -= 1
-
         return max_val, path_trace
 
     # given the integer representation of a single sequence
@@ -381,14 +384,6 @@ class HMM:
         #     "Transitions After Em on this sample during this iteration", self.transitions)
         # print(
         #     "Emissions After Em on this sample during this iteration", self.emissions)
-        pos_count, neg_count = self.compare_theta(
-            transitions, self.transitions)
-        print("Transitions changes: increase",
-              pos_count, "decrease", neg_count)
-        pos_count, neg_count = self.compare_theta(
-            emissions, self.emissions)
-        print("Emissions changes: increase",
-              pos_count, "decrease", neg_count)
         # mean_loglikelihood += self.loglikelihood_helper(dataset[i])
 
         # mean_loglikelihood = mean_loglikelihood/sample_size
@@ -416,39 +411,51 @@ class HMM:
             if i > 1:
                 if loglike - loglikes[i-1] < epsilon:
                     self.save(os.path.join(
-                        "../modelFile/", "model" + str(int(i/5))))
+                        "../modelFile3/", "model" + str(int(i/5))))
                     self.get_figure(
-                        range(1, i+1), loglikes[0:i], 'Iteration', 'Log Likelihood')
+                        range(1, i+1), loglikes[0:i], 'Iteration', 'Log Likelihood', "train_plot")
                     break
             loglikes[i] = loglike
             if i % 5 == 0:
-                self.save(os.path.join(
-                    "../modelFile/", "model" + str(int(i/5))))
-                self.get_figure(
-                    range(1, i+1), loglikes[0:i], 'Iteration', 'Log Likelihood')
-        print("Log Likelihoods:", loglikes)
+                self.save(os.path.join("../modelFile3/", "model" + str(int(i/5))))
+                self.get_figure(range(1, i+1), loglikes[0:i], 'Iteration', 'Log Likelihood', "train_plot")
+            print("Log Likelihoods:", loglike)
 
-    def test(self, test_data, int_to_word_map):
+    def pred_accuracy(self, sample, prediction, num_words_into_future):
         correct = 0
         incorrect = 0
-        for sample in test_data:
-            predicted = self.predict_with_viterbi(sample[:len(sample)-5], 5)
-            # translated = translate_int_to_words(predicted, int_to_word_map)
-            # print(translate_int_to_words(predicted[-5:], int_to_word_map))
-            for i in range(1, 6):
-                if sample[len(sample)-i] == predicted[len(sample)-i]:
-                    correct += 1
-                else:
-                    incorrect += 1
-
+        for i in range(1, num_words_into_future+1):
+            if sample[len(sample)-i] == prediction[len(sample)-i]:
+                correct += 1
+            else:
+                incorrect += 1
         return correct/(correct+incorrect)
 
-    def get_figure(self, xvalues, yvalues, xaxisname, yaxisname):
+    def int_to_words(self, sample_int, int_to_word_map):
+        sample = ""
+        for i in sample_int:
+            sample += int_to_word_map[i] + " "
+        return sample
+
+    def predict(self, test_data, vocab_size, int_to_word_map, num_words_into_future):
+        acc_viterbi = 0
+        acc_simple = 0
+        for i, sample in enumerate(test_data):
+            predicted_viterbi = self.predict_with_viterbi(sample[:len(sample)-num_words_into_future], num_words_into_future)
+            # translated = translate_int_to_words(predicted, int_to_word_map)
+            # print(translate_int_to_words(predicted[-5:], int_to_word_map))
+            acc_viterbi += self.pred_accuracy(sample, predicted_viterbi, num_words_into_future)
+            predicted_simple = self.predict_simple(sample[:len(sample)-num_words_into_future], vocab_size, num_words_into_future)
+            acc_simple += self.pred_accuracy(sample, predicted_simple, num_words_into_future)
+            print("{} out of {} samples complete".format(i+1, len(test_data)))
+        return acc_viterbi/len(test_data), acc_simple/len(test_data)
+
+    def get_figure(self, xvalues, yvalues, xaxisname, yaxisname, filename):
         fig = plt.figure()
         plt.plot(xvalues, yvalues)
         plt.xlabel(xaxisname)
         plt.ylabel(yaxisname)
-        plt.savefig('Plot')
+        plt.savefig(os.path.join("../plots/", filename))
 
     def save(self, filename):
         with open(filename, 'wb') as fh:
@@ -468,14 +475,16 @@ def main():
                         help='Path to the development data directory.')
     parser.add_argument('--model_path', default=None,
                         help='Path to model directory')
-    parser.add_argument('--max_iters', type=int, default=20,
+    parser.add_argument('--max_iters', type=int, default=6,
                         help='The maximum number of EM iterations (default 30)')
     parser.add_argument('--hidden_states', type=int, default=10,
                         help='The number of hidden states to use. (default 10)')
-    parser.add_argument('--sample_size', type=int, default=10,
+    parser.add_argument('--train_sample_size', type=int, default=200,
                         help='The max number of samples. (default 100)')
-    parser.add_argument('--train', type=int, default=1,
-                        help='Whether we are training. Training is 1, prediction is 0. (default 1)')
+    parser.add_argument('--test_sample_size', type=int, default=4,
+                        help='The max number of samples. (default 100)')
+    parser.add_argument('--mode', type=int, default=1,
+                        help='Modes. Testing is 2, training is 1, prediction is 0. (default 1)')
     args = parser.parse_args()
 
     # OVERALL PROJECT ALGORITHM:
@@ -502,24 +511,24 @@ def main():
     train_paths = [postrain, negtrain]
 
     word_vocab, int_to_word_map = build_vocab_words(
-        train_paths, args.sample_size)
+        train_paths, args.train_sample_size)
 
     vocab_size = len(word_vocab)
 
-    if args.train == 1:
+    if args.mode == 1:
         # Paths for positive and negative training data
 
         # Create vocab and get its size. word_vocab is a dictionary from words to integers. Ex: 'painful':2070
         # word_vocab, int_to_word_map = build_vocab_words(
         #     train_paths, args.sample_size)
         dataset_complete = load_and_convert_data_words_to_ints(
-            train_paths, word_vocab, args.sample_size)
+            train_paths, word_vocab, args.train_sample_size)
         dataset = dataset_complete
         # dataset = np.random.choice(dataset_complete, size=args.sample_size)
         # dataset = dataset_complete
 
         # Create model
-        model = HMM(args.hidden_states, vocab_size)
+        model = HMM(args.hidden_states, vocab_size, word_vocab)
         # sample_with_predictions_added = model.predict_with_viterbi(dataset[0], 5)
         # print(model.translate_int_to_words(
         # sample_with_predictions_added, int_to_word_map))
@@ -535,8 +544,42 @@ def main():
         # dataset[2][0:len(dataset[2])-8], 5)
         # print(model.translate_int_to_words(prediction_with_v, int_to_word_map))
         #model.predict_with_viterbi(sample, 5)
-        model.save(os.path.join("../modelFile/", "model"))
-    else:
+        model.save(os.path.join("../modelFile3/", "model"))
+    elif args.mode == 0:
+        # Paths for positive and negative training data
+        postest = os.path.join(args.dev_path, 'pos')
+        negtest = os.path.join(args.dev_path, 'neg')
+        test_paths = [postest, negtest]
+        num_words_into_future = [1, 5, 8]
+
+        # Sort list of models
+        model_list = os.listdir(args.model_path)
+        final_model_exists = False
+        if "model" in model_list:
+            model_list.remove("model")
+            final_model_exists = True
+        model_list.sort(key=lambda x: int(x[5:]))
+        if final_model_exists:
+            model_list.append("model")  # "model" is the final model created
+        filename = model_list[len(model_list)-1]
+        model = HMM.load(os.path.join(args.model_path, filename))
+
+        pred_accuracies_viterbi = [None] * len(num_words_into_future)
+        pred_accuracies_simple = [None] * len(num_words_into_future)
+        test_data = build_test_samples(test_paths, args.test_sample_size, word_vocab)
+        # print(filename, model.emissions.shape)
+
+        for idx, i in enumerate(num_words_into_future):
+            pred_accuracies_viterbi[idx], pred_accuracies_simple[idx] = model.predict(test_data, vocab_size, int_to_word_map, i)
+            print("Tested: {} pred_accuracy_viterbi: {} pred_accuracy_simple: {}".format(i, pred_accuracies_viterbi[idx], pred_accuracies_simple[idx]))
+
+        model.get_figure(range(1, len(pred_accuracies_viterbi)+1),
+                         pred_accuracies_viterbi, '5 x Nth Iteration', 'Viterbi Accuracy', "PredViterbi")
+        model.get_figure(range(1, len(pred_accuracies_simple)+1),
+                         pred_accuracies_simple, '5 x Nth Iteration', 'Simple Prediction Accuracy', "PredSimple")
+        print(pred_accuracies_viterbi)
+        print(pred_accuracies_simple)
+    elif args.mode == 2:
         # Paths for positive and negative training data
         postest = os.path.join(args.dev_path, 'pos')
         negtest = os.path.join(args.dev_path, 'neg')
@@ -547,23 +590,22 @@ def main():
         model_list.remove("model")
         model_list.sort(key=lambda x: int(x[5:]))
         model_list.append("model")  # "model" is the final model created
-
-        test_accuracies = [None] * len(model_list)
-        test_likes = [None] * len(model_list)
+        dataset = build_test_samples(test_paths, args.test_sample_size, word_vocab)
+        dataset_flattened = []
+        test_LL = [None] * len(model_list)
+        for x in dataset:
+            for string in x:
+                dataset_flattened.append(string)
         for i in range(0, len(model_list)):
             # Just testing on final model initially --> will actually be = model_list[i]
             filename = model_list[i]
             model = HMM.load(os.path.join(args.model_path, filename))
-            test_data = build_test_samples(test_paths, 50, word_vocab)
-            test_accuracies[i] = model.test(test_data, int_to_word_map)
-            print("Tested: {}".format(i))
-
-        model.get_figure(range(1, len(test_accuracies)+1),
-                         test_accuracies, '5 x Nth Iteration', 'Viterbi Accuracy')
-        print(test_accuracies)
+            test_LL[i] = model.loglikelihood_helper(dataset_flattened)/args.test_sample_size
+            print("Tested: {} LL: {}".format(i, test_LL[i]))
+        model.get_figure(range(1, len(test_LL)+1), test_LL, 'iterations', 'Log Likelihood per model', "test_LL")
 
 
 if __name__ == '__main__':
     main()
 
-# CMD arg: python hmm.py --train_path ../../imdbFor246/train --hidden_states 5 --sample_size 6 --max_iters
+# CMD arg: python hmm.py --dev_path ../imdbFor246/test --model_path ../modelFile --train_path ../imdbFor246/train --mode 0
