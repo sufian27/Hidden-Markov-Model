@@ -44,7 +44,7 @@ class HMM:
             np.random.rand(self.num_states, self.num_states))
         # pi is vector of size K, also initialized between 0 and 1
         self.pi = self.normalize_row(np.random.rand(self.num_states))
-        # TEMPORARY: Intializing emissions to uniform distribution
+        # Intializing emissions to uniform distribution
         self.emissions = self.normalize(
             np.random.rand(self.num_states, self.vocab_size))
         # save the word vocab for future testing and predicting
@@ -58,7 +58,6 @@ class HMM:
             count += 1
             loglikelihood = self.loglikelihood_helper(sample)
             mean_loglikelihood += loglikelihood
-            # print(count/len(dataset)*100, "%")
         mean_loglikelihood /= len(dataset)
         return mean_loglikelihood
 
@@ -68,11 +67,7 @@ class HMM:
         loglikelihood = 0
         for c_t in c:
             loglikelihood += np.log(c_t)
-            # print("c_t", c_t)
-            # print("log(c_t)", np.log(c_t))
-        # print("LL",loglikelihood)
         loglikelihood = -loglikelihood
-        # print("LL",loglikelihood)
         return loglikelihood
 
     def normalize(self, matrix):
@@ -163,7 +158,6 @@ class HMM:
                 if(sample[0] == -99):  # blank then emission israndom b/w 0 and 1
                     v[t][j] = max_v_prev * np.random.rand(1)[0]
                 else:
-                    #print(self.emissions.shape, sample[t])
                     v[t][j] = max_v_prev * self.emissions[j][sample[t]]
 
                 backpointer[t][j] = prev_state_selected
@@ -185,7 +179,6 @@ class HMM:
         # run backtrace
         index = len(path_trace)-2
         while(index >= 0):
-            # backpointer[current_time][state of the next node in path]
             path_trace[index] = backpointer[time][path_trace[index+1]]
             time -= 1
             index -= 1
@@ -197,17 +190,16 @@ class HMM:
     def forward(self, sample):
         alpha = np.zeros((len(sample), self.num_states))
         c = np.zeros((len(sample),))
+
         # initialization
         for j in range(0, self.num_states):
             alpha[0][j] = np.longdouble(
                 self.pi[j] * self.emissions[j][sample[0]])
-            # print("c[0]", c[0], "alpha[0][j]", alpha[0][j])
             c[0] += alpha[0][j]
-        # print("c[0] before", c[0])
+
         c[0] = 1/c[0]
-        # print("c[0] after", c[0])
         alpha[0] *= c[0]
-        # print("alpha[0]", alpha[0])
+
         # recursion
         for t in range(1, len(sample)):
             for j in range(0, self.num_states):
@@ -215,13 +207,9 @@ class HMM:
                     # print(t, j, sample[t])
                     alpha[t][j] += np.longdouble(alpha[t-1][i] *
                                                  self.transitions[i][j] * self.emissions[j][sample[t]])
-                # print("c[t]", c[t], "alpha[t][j]", alpha[t][j])
                 c[t] += alpha[t][j]
-            # print("c[t] before", c[t])
             c[t] = 1/c[t]
-            # print("c[t] after", c[t])
             alpha[t] *= c[t]
-            # print("alpha["+str(t)+"]",alpha[t])
 
         return alpha, c
 
@@ -231,7 +219,6 @@ class HMM:
         beta = np.zeros((len(sample), self.num_states))
         # initialization
         beta[len(sample)-1] = c[len(sample)-1]
-
         # recursion
         for t in range(1, len(sample)):
             for i in range(0, self.num_states):
@@ -239,28 +226,17 @@ class HMM:
                     beta[len(sample)-1-t][i] += np.longdouble(self.transitions[i][j] *
                                                               self.emissions[j][sample[len(sample)-t]] * beta[len(sample)-t][j])
             beta[len(sample)-1-t] *= c[len(sample)-1-t]
-            # print("beta["+str(len(sample)-1-t)+"]", beta[len(sample)-1-t])
-        # for alph in beta:
-            # print("Beta rom sum ", np.sum(alph))
         return beta
 
     # Uses alpha and beta values to calculate
     # e[t][i][j] = Probability of being in state i at time t and state j at time t+1
     # y[t][j] = Probability of being in state j at time t
     def e_step(self, sample):
-        # print("Sample is ", sample)
         alpha, c = self.forward(sample)
         beta = self.backward(sample, c)
-        # print("Alpha Below ")
-        # print(alpha)
-        # print("Beta Below ")
-        # print(beta)
-        # print("C Below ")
-        # print(c)
 
         y = np.zeros((len(sample), self.num_states))
         e = np.zeros((len(sample), self.num_states, self.num_states))
-        # print(beta)
         for t in range(0, len(sample)-1):
             for j in range(0, self.num_states):
                 y[t][j] = 0
@@ -272,15 +248,6 @@ class HMM:
 
         for i in range(0, self.num_states):
             y[len(sample)-1][i] = alpha[len(sample)-1][i]
-        # for yrow in y:
-        #     print("Sum of row in y", np.sum(yrow))
-        # for t in range(0, len(sample)-1):
-        #     for erow in e[t]:
-        #         print("Sum of row in e", np.sum(erow))
-        # print("Y Below ")
-        # print(y)
-        # print("E Below ")
-        # print(e)
         return y, e
 
     # Tunes transitions
@@ -340,7 +307,6 @@ class HMM:
     def m_step(self, sample, y, e):
         for i in range(0, len(self.pi)):
             self.pi[i] = y[0][i]
-
         self.tune_transitions_new(sample, y, e)
         self.tune_emissions_new(sample, y, e)
 
@@ -349,11 +315,6 @@ class HMM:
         neg_count = 0
         for i in range(0, len(prev)):
             for j in range(0, len(prev[i])):
-                # if np.log(after[i][j]) - np.log(prev[i][j]) == 0:
-                #     # print("NO CHANGE.")
-                # else:
-                #     print("YES CHANGE.")
-
                 if np.log(after[i][j]) - np.log(prev[i][j]) > 0:
                     pos_count += 1
                 else:
@@ -365,39 +326,17 @@ class HMM:
     # Note: you may find it helpful to write helper methods for the e-step and m-step,
     def em_step(self, sample_size, dataset):
         # Takes out a sample from the dataset and does e_step and m_step
-        # print("Before EM. Below are transitions followed by emissions")
-        # print(self.transitions)
-        # # print(self.emissions)
-        # for transition in self.emissions:
-        #     print("Sum of row in emissions", np.sum(transition))
+
+        # Flatten the dataset
         sample = []
         for x in dataset:
             for string in x:
                 sample.append(string)
-        # mean_loglikelihood = 0.0
-        # for i in range(0, sample_size):
-        #     # rnd = random.randint(0, len(dataset)-1)  # Pick a random sample
-        #     sample = dataset_flattened[i]
 
         transitions = np.copy(self.transitions)
         emissions = np.copy(self.emissions)
-        # print("Started ", i+1, " out of ",
-        #       sample_size, " samples in this iteration")
         y, e = self.e_step(sample)
         self.m_step(sample, y, e)
-        # print("Completed ", i+1, " out of ",
-        #       sample_size, " samples in this iteration")
-        # print(
-        #     "Transitions After Em on this sample during this iteration", self.transitions)
-        # print(
-        #     "Emissions After Em on this sample during this iteration", self.emissions)
-        # mean_loglikelihood += self.loglikelihood_helper(dataset[i])
-
-        # mean_loglikelihood = mean_loglikelihood/sample_size
-        # return mean_loglikelihood
-        # print("After EM. Below are transitions followed by emissions")
-        # print(self.transitions)
-        # print(self.emissions)
 
     # Return a "completed" sample by additing additional steps based on model probability.
     def complete_sequence(self, sample, steps):
@@ -413,14 +352,14 @@ class HMM:
             if i > 1:
                 if loglike - loglikes[i-1] < epsilon:
                     self.save(os.path.join(
-                        "../modelFile3/", "model" + str(int(i/5))))
+                        "../modelFile/", "model" + str(int(i/5))))
                     self.get_figure(
                         range(1, i+1), loglikes[0:i], 'Iteration', 'Log Likelihood', "train_plot")
                     break
             loglikes[i] = loglike
             if i % 5 == 0:
                 self.save(os.path.join(
-                    "../modelFile3/", "model" + str(int(i/5))))
+                    "../modelFile/", "model" + str(int(i/5))))
                 self.get_figure(
                     range(1, i+1), loglikes[0:i], 'Iteration', 'Log Likelihood', "train_plot")
             print("Log Likelihoods:", loglike)
@@ -447,17 +386,16 @@ class HMM:
         for i, sample in enumerate(test_data):
             predicted_viterbi = self.predict_with_viterbi(
                 sample[:len(sample)-num_words_into_future], num_words_into_future)
-            # translated = translate_int_to_words(predicted, int_to_word_map)
-            # print(translate_int_to_words(predicted[-5:], int_to_word_map))
             acc_viterbi += self.pred_accuracy(sample,
                                               predicted_viterbi, num_words_into_future)
+
+            ############# COMMENT OUT FOLLOWING LINES TO TEST SIMPLE PREDICTION ##############
             # predicted_simple = self.predict_simple(
             #     sample[:len(sample)-num_words_into_future], vocab_size, num_words_into_future)
             # acc_simple += self.pred_accuracy(sample,
             #                                  predicted_simple, num_words_into_future)
-            print("{} out of {} samples complete".format(i+1, len(test_data)))
+
         return acc_viterbi/len(test_data)
-        # , acc_simple/len(test_data)
 
     def get_figure(self, xvalues, yvalues, xaxisname, yaxisname, filename):
         fig = plt.figure()
@@ -515,46 +453,22 @@ def main():
 
     postrain = os.path.join(args.train_path, 'pos')
     negtrain = os.path.join(args.train_path, 'neg')
-
     # Combine into list
     train_paths = [postrain, negtrain]
-
     word_vocab, int_to_word_map = build_vocab_words(
         train_paths, args.train_sample_size)
-
     vocab_size = len(word_vocab)
 
-    if args.mode == 1:
-        # Paths for positive and negative training data
-
-        # Create vocab and get its size. word_vocab is a dictionary from words to integers. Ex: 'painful':2070
-        # word_vocab, int_to_word_map = build_vocab_words(
-        #     train_paths, args.sample_size)
+    if args.mode == 1:  # Mode for training
         dataset_complete = load_and_convert_data_words_to_ints(
             train_paths, word_vocab, args.train_sample_size)
-        dataset = dataset_complete
-        # dataset = np.random.choice(dataset_complete, size=args.sample_size)
-        # dataset = dataset_complete
+        dataset = dataset_complet
 
         # Create model
         model = HMM(args.hidden_states, vocab_size, word_vocab)
-        # sample_with_predictions_added = model.predict_with_viterbi(dataset[0], 5)
-        # print(model.translate_int_to_words(
-        # sample_with_predictions_added, int_to_word_map))
-        # loglikelihood = model.loglikelihood(dataset)
-        # print(loglikelihood)
         model.train(args.max_iters, len(dataset), dataset)
-        # loglikelihood = model.loglikelihood(dataset)
-        # print(loglikelihood)
-        # print(int_to_word_map.get(0))
-        # give it sample and a number. It will return a new sample with predicted words appended to the end.
-        # model.predict_with_viterbi(sample, 5)
-        # prediction_with_v = model.predict_with_viterbi(
-        # dataset[2][0:len(dataset[2])-8], 5)
-        # print(model.translate_int_to_words(prediction_with_v, int_to_word_map))
-        #model.predict_with_viterbi(sample, 5)
-        model.save(os.path.join("../modelFile3/", "model"))
-    elif args.mode == 0:
+        model.save(os.path.join("../modelFile/", "model"))
+    elif args.mode == 0:  # Mode for predicting
         # Paths for positive and negative training data
         postest = os.path.join(args.dev_path, 'pos')
         negtest = os.path.join(args.dev_path, 'neg')
@@ -574,38 +488,47 @@ def main():
         model = HMM.load(os.path.join(args.model_path, filename))
 
         pred_accuracies_viterbi = [None] * len(num_words_into_future)
+
+        ############# COMMENT OUT FOLLOWING LINES TO TEST SIMPLE PREDICTION ##############
         # pred_accuracies_simple = [None] * len(num_words_into_future)
+
         test_data = build_test_samples(
-            test_paths, args.test_sample_size, word_vocab)
-        # print(filename, model.emissions.shape)
+            train_paths, args.test_sample_size, word_vocab)
 
         for idx, i in enumerate(num_words_into_future):
+
+            ############# COMMENT OUT FOLLOWING LINES TO TEST SIMPLE PREDICTION ##############
             # pred_accuracies_viterbi[idx], pred_accuracies_simple[idx] = model.predict(
             #     test_data, vocab_size, int_to_word_map, i)
+
             pred_accuracies_viterbi[idx] = model.predict(
                 test_data, vocab_size, int_to_word_map, i)
-            # print("Tested: {} pred_accuracy_viterbi: {} pred_accuracy_simple: {}".format(
-            #     i, pred_accuracies_viterbi[idx], pred_accuracies_simple[idx]))
             print("Tested: {} pred_accuracy_viterbi: ".format(
                 i, pred_accuracies_viterbi[idx]))
 
         model.get_figure(num_words_into_future,
                          pred_accuracies_viterbi, 'words predicted into future', 'Viterbi Accuracy', "PredViterbi")
+
+        ############# COMMENT OUT FOLLOWING LINES TO TEST SIMPLE PREDICTION ##############
         # model.get_figure(range(1, len(pred_accuracies_simple)+1),
         #                  pred_accuracies_simple, '5 x Nth Iteration', 'Simple Prediction Accuracy', "PredSimple")
-        print(pred_accuracies_viterbi)
-        # print(pred_accuracies_simple)
-    elif args.mode == 2:
+
+    elif args.mode == 2:  # Mode for testing log likelihood on testing dat
+
         # Paths for positive and negative training data
         postest = os.path.join(args.dev_path, 'pos')
         negtest = os.path.join(args.dev_path, 'neg')
         test_paths = [postest, negtest]
 
         # Sort list of models
-        model_list = os.listdir(args.model_path)
-        model_list.remove("model")
+        if "model" in model_list:
+            model_list.remove("model")
+            final_model_exists = True
         model_list.sort(key=lambda x: int(x[5:]))
-        model_list.append("model")  # "model" is the final model created
+        if final_model_exists:
+            model_list.append("model")  # "model" is the final model created
+
+        # Flatten the dataset
         dataset = build_test_samples(
             test_paths, args.test_sample_size, word_vocab)
         dataset_flattened = []
@@ -613,8 +536,9 @@ def main():
         for x in dataset:
             for string in x:
                 dataset_flattened.append(string)
+
+        # Iterate over the list of models and find the Log Likelihood
         for i in range(0, len(model_list)):
-            # Just testing on final model initially --> will actually be = model_list[i]
             filename = model_list[i]
             model = HMM.load(os.path.join(args.model_path, filename))
             test_LL[i] = model.loglikelihood_helper(
@@ -626,5 +550,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-# CMD arg: python hmm.py --dev_path ../imdbFor246/test --model_path ../modelFile --train_path ../imdbFor246/train --mode 0
