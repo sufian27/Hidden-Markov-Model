@@ -451,12 +451,13 @@ class HMM:
             # print(translate_int_to_words(predicted[-5:], int_to_word_map))
             acc_viterbi += self.pred_accuracy(sample,
                                               predicted_viterbi, num_words_into_future)
-            predicted_simple = self.predict_simple(
-                sample[:len(sample)-num_words_into_future], vocab_size, num_words_into_future)
-            acc_simple += self.pred_accuracy(sample,
-                                             predicted_simple, num_words_into_future)
+            # predicted_simple = self.predict_simple(
+            #     sample[:len(sample)-num_words_into_future], vocab_size, num_words_into_future)
+            # acc_simple += self.pred_accuracy(sample,
+            #                                  predicted_simple, num_words_into_future)
             print("{} out of {} samples complete".format(i+1, len(test_data)))
-        return acc_viterbi/len(test_data), acc_simple/len(test_data)
+        return acc_viterbi/len(test_data)
+        # , acc_simple/len(test_data)
 
     def get_figure(self, xvalues, yvalues, xaxisname, yaxisname, filename):
         fig = plt.figure()
@@ -558,7 +559,7 @@ def main():
         postest = os.path.join(args.dev_path, 'pos')
         negtest = os.path.join(args.dev_path, 'neg')
         test_paths = [postest, negtest]
-        num_words_into_future = [1, 5, 8]
+        num_words_into_future = [1, 3, 5]
 
         # Sort list of models
         model_list = os.listdir(args.model_path)
@@ -573,23 +574,27 @@ def main():
         model = HMM.load(os.path.join(args.model_path, filename))
 
         pred_accuracies_viterbi = [None] * len(num_words_into_future)
-        pred_accuracies_simple = [None] * len(num_words_into_future)
+        # pred_accuracies_simple = [None] * len(num_words_into_future)
         test_data = build_test_samples(
             test_paths, args.test_sample_size, word_vocab)
         # print(filename, model.emissions.shape)
 
         for idx, i in enumerate(num_words_into_future):
-            pred_accuracies_viterbi[idx], pred_accuracies_simple[idx] = model.predict(
+            # pred_accuracies_viterbi[idx], pred_accuracies_simple[idx] = model.predict(
+            #     test_data, vocab_size, int_to_word_map, i)
+            pred_accuracies_viterbi[idx] = model.predict(
                 test_data, vocab_size, int_to_word_map, i)
-            print("Tested: {} pred_accuracy_viterbi: {} pred_accuracy_simple: {}".format(
-                i, pred_accuracies_viterbi[idx], pred_accuracies_simple[idx]))
+            # print("Tested: {} pred_accuracy_viterbi: {} pred_accuracy_simple: {}".format(
+            #     i, pred_accuracies_viterbi[idx], pred_accuracies_simple[idx]))
+            print("Tested: {} pred_accuracy_viterbi: ".format(
+                i, pred_accuracies_viterbi[idx]))
 
-        model.get_figure(range(1, len(pred_accuracies_viterbi)+1),
-                         pred_accuracies_viterbi, '5 x Nth Iteration', 'Viterbi Accuracy', "PredViterbi")
-        model.get_figure(range(1, len(pred_accuracies_simple)+1),
-                         pred_accuracies_simple, '5 x Nth Iteration', 'Simple Prediction Accuracy', "PredSimple")
+        model.get_figure(num_words_into_future,
+                         pred_accuracies_viterbi, 'words predicted into future', 'Viterbi Accuracy', "PredViterbi")
+        # model.get_figure(range(1, len(pred_accuracies_simple)+1),
+        #                  pred_accuracies_simple, '5 x Nth Iteration', 'Simple Prediction Accuracy', "PredSimple")
         print(pred_accuracies_viterbi)
-        print(pred_accuracies_simple)
+        # print(pred_accuracies_simple)
     elif args.mode == 2:
         # Paths for positive and negative training data
         postest = os.path.join(args.dev_path, 'pos')
