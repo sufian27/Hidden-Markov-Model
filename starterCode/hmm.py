@@ -204,7 +204,6 @@ class HMM:
         for t in range(1, len(sample)):
             for j in range(0, self.num_states):
                 for i in range(0, self.num_states):
-                    # print(t, j, sample[t])
                     alpha[t][j] += np.longdouble(alpha[t-1][i] *
                                                  self.transitions[i][j] * self.emissions[j][sample[t]])
                 c[t] += alpha[t][j]
@@ -241,7 +240,6 @@ class HMM:
             for j in range(0, self.num_states):
                 y[t][j] = 0
                 for i in range(0, self.num_states):
-                    #print(len(sample)-1, t, j, i)
                     e[t][j][i] = (alpha[t][j] * self.transitions[j]
                                   [i] * self.emissions[i][sample[t+1]] * beta[t+1][i])
                     y[t][j] += e[t][j][i]
@@ -272,7 +270,6 @@ class HMM:
                 for t in range(0, len(sample) - 1):
                     num += e[t][i][j]
                 self.transitions[i][j] = num/den
-        # self.normalize(self.transitions)
 
     # Tunes emissions
     def tune_emissions(self, sample, y, e):
@@ -462,12 +459,13 @@ def main():
     if args.mode == 1:  # Mode for training
         dataset_complete = load_and_convert_data_words_to_ints(
             train_paths, word_vocab, args.train_sample_size)
-        dataset = dataset_complet
+        dataset = dataset_complete
 
         # Create model
         model = HMM(args.hidden_states, vocab_size, word_vocab)
         model.train(args.max_iters, len(dataset), dataset)
         model.save(os.path.join("../modelFile/", "model"))
+
     elif args.mode == 0:  # Mode for predicting
         # Paths for positive and negative training data
         postest = os.path.join(args.dev_path, 'pos')
@@ -484,6 +482,7 @@ def main():
         model_list.sort(key=lambda x: int(x[5:]))
         if final_model_exists:
             model_list.append("model")  # "model" is the final model created
+
         filename = model_list[len(model_list)-1]
         model = HMM.load(os.path.join(args.model_path, filename))
 
@@ -492,8 +491,9 @@ def main():
         ############# COMMENT OUT FOLLOWING LINES TO TEST SIMPLE PREDICTION ##############
         # pred_accuracies_simple = [None] * len(num_words_into_future)
 
+        ############# CHANGE test_paths TO train_paths TO TEST ON TRAINING DATA ##############
         test_data = build_test_samples(
-            train_paths, args.test_sample_size, word_vocab)
+            test_paths, args.test_sample_size, word_vocab)
 
         for idx, i in enumerate(num_words_into_future):
 
@@ -528,7 +528,7 @@ def main():
         if final_model_exists:
             model_list.append("model")  # "model" is the final model created
 
-        # Flatten the dataset
+        ############# CHANGE test_paths TO train_paths TO TEST ON TRAINING DATA ##############
         dataset = build_test_samples(
             test_paths, args.test_sample_size, word_vocab)
         dataset_flattened = []
