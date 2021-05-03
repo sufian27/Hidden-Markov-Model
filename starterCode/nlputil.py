@@ -43,8 +43,6 @@ def build_vocab_words(paths, sample_size):
             with open(os.path.join(path, filename), encoding='utf-8') as fh:
                 sequence = fh.read()
                 tokenized_seq = sequence.split()
-                # TODO: Remove this. added by abdul for his samples
-                tokenized_seq = tokenized_seq[0:98]
                 if len(tokenized_seq) < 100 and len(tokenized_seq) > 0:
 
                     for token in tokenized_seq:
@@ -59,6 +57,25 @@ def build_vocab_words(paths, sample_size):
             break
     print("finished")
     return vocab, int_to_word_map
+
+
+def translate_int_to_words(sample, int_to_word_map):
+    answer = []
+    for i in range(0, len(sample)):
+        answer.append(int_to_word_map.get(sample[i]))
+    return answer
+
+
+def build_test_samples(paths, num_samples, vocab):
+    samples = []
+    for path in paths:
+        l = os.listdir(path)
+        for i in range(0, num_samples):
+            with open(os.path.join(path, l[i]), encoding='utf-8') as fh:
+                sample = convert_words_to_ints(fh.read(), vocab)
+                sample = [i for i in sample if i != -1]  # Remove all UNK
+                samples.append(sample)
+    return samples
 
 # Same as above, but for character models.
 
@@ -85,14 +102,23 @@ def build_vocab_chars(paths, sample_size):
     return vocab
 
 
-# Sample is a plain string - not a list -- UNK token has value zero.
+# Sample is a plain string - not a list -- UNK token has value zero --> changing it to -1
 # Convert the sample to a integer representation, which is an Nx1 array of ints,
 # where N is the number of tokens in the sequence.
 def convert_words_to_ints(sample, vocab):
     sequence = sample.split()
-    answer = np.zeros(len(sequence), dtype=np.uint)
+    answer = np.zeros(len(sequence), dtype=np.int64)
     for n, token in enumerate(sequence):
-        answer[n] = vocab.get(token, 0)
+        answer[n] = vocab.get(token, -1)
+    return answer
+
+
+def convert_test_seq_into_ints(sample, vocab):
+    sequence = sample.split()
+    answer = []
+    for token in sequence:
+        if vocab.get(token, -1) is not None:
+            answer.append(vocab.get(token, -1))
     return answer
 
 # Same as above, but for characters.
@@ -155,8 +181,42 @@ def load_and_convert_data_words_to_ints(paths, vocab, sample_size):
         for filename in os.listdir(path):
             with open(os.path.join(path, filename), encoding='utf-8') as fh:
                 sample = convert_words_to_ints(fh.read(), vocab)
-                # TODO: REmove this. added by abdulmoid for his samples
-                sample = sample[0:98]
+                if len(sample) > 0 and len(sample) < 100:
+                    data.append(sample)
+                    count += 1
+            if count >= sample_size/2:
+                break
+        if count >= sample_size/2:
+            break
+    print("finished")
+    return data
+
+
+def load_and_convert_test_data_to_ints(paths, vocab, sample_size):
+    data = []
+    count = 0
+    for path in paths:
+        for filename in os.listdir(path):
+            with open(os.path.join(path, filename), encoding='utf-8') as fh:
+                sample = convert_test_seq_into_ints(fh.read(), vocab)
+                if len(sample) > 0 and len(sample) < 100:
+                    data.append(sample)
+                    count += 1
+            if count >= sample_size/2:
+                break
+        if count >= sample_size/2:
+            break
+    print("finished")
+    return data
+
+
+def load_and_convert_data_words_to_ints(paths, vocab, sample_size):
+    data = []
+    count = 0
+    for path in paths:
+        for filename in os.listdir(path):
+            with open(os.path.join(path, filename), encoding='utf-8') as fh:
+                sample = convert_words_to_ints(fh.read(), vocab)
                 if len(sample) > 0 and len(sample) < 100:
                     data.append(sample)
                     count += 1
