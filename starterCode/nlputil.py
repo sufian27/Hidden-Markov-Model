@@ -38,7 +38,8 @@ def build_vocab_words(paths, sample_size):
     int_to_word_map = {}
     nextValue = 0
     count = 0
-    for path in paths:
+    sizes = [sample_size/2, sample_size-sample_size/2]
+    for idx, path in enumerate(paths):
         for filename in os.listdir(path):
             with open(os.path.join(path, filename), encoding='utf-8') as fh:
                 sequence = fh.read()
@@ -51,9 +52,9 @@ def build_vocab_words(paths, sample_size):
                             int_to_word_map[nextValue] = token
                             nextValue += 1
                     count += 1
-            if count >= sample_size/2:
+            if count >= sizes[idx]:
                 break
-        if count >= sample_size/2:
+        if count >= sizes[idx]:
             break
     print("finished")
     return vocab, int_to_word_map
@@ -66,11 +67,12 @@ def translate_int_to_words(sample, int_to_word_map):
     return answer
 
 
-def build_test_samples(paths, num_samples, vocab):
+def build_test_samples(paths, sample_size, vocab):
     samples = []
-    for path in paths:
+    sizes = [sample_size/2, sample_size-sample_size/2]
+    for idx, path in enumerate(paths):
         l = os.listdir(path)
-        for i in range(0, num_samples):
+        for i in range(0, int(sizes[idx])):
             with open(os.path.join(path, l[i]), encoding='utf-8') as fh:
                 sample = convert_words_to_ints(fh.read(), vocab)
                 sample = [i for i in sample if i != -1]  # Remove all UNK
@@ -177,16 +179,17 @@ def load_and_convert_data_chars_to_onehot(paths, vocab):
 def load_and_convert_data_words_to_ints(paths, vocab, sample_size):
     data = []
     count = 0
-    for path in paths:
+    sizes = [sample_size/2, sample_size-sample_size/2]
+    for idx, path in enumerate(paths):
         for filename in os.listdir(path):
             with open(os.path.join(path, filename), encoding='utf-8') as fh:
                 sample = convert_words_to_ints(fh.read(), vocab)
                 if len(sample) > 0 and len(sample) < 100:
                     data.append(sample)
                     count += 1
-            if count >= sample_size/2:
+            if count >= sizes[idx]:
                 break
-        if count >= sample_size/2:
+        if count >= sizes[idx]:
             break
     print("finished")
     return data
